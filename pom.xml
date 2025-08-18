@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <organization>
+    <name>may i reflect again?</name>
+    <url>https://mira.sbs</url>
+  </organization>
+
+  <parent>
+    <groupId>sbs.mira</groupId>
+    <artifactId>mira</artifactId>
+    <version>1.0.0</version>
+  </parent>
+
+  <artifactId>core</artifactId>
+  <version>1.0.1</version>
+  <packaging>jar</packaging>
+
+  <name>core.mira.sbs</name>
+  <description>sharing is caring.</description>
+  <url>https://core.mira.sbs/</url>
+
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <build>
+    <finalName>${project.name}</finalName>
+    <sourceDirectory>${basedir}/src/main/java</sourceDirectory>
+
+    <resources>
+      <resource>
+        <targetPath>.</targetPath>
+        <filtering>true</filtering>
+        <directory>${basedir}/src/main/resources</directory>
+        <includes>
+          <include>config.yml</include>
+          <include>messages.yml</include>
+        </includes>
+      </resource>
+    </resources>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.3.2</version>
+        <configuration>
+          <source>24</source>
+          <target>24</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.2</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <artifactSet>
+                <includes>
+                  <include>com.sk89q:command-framework-bukkit</include>
+                </includes>
+              </artifactSet>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+  <issueManagement>
+    <system>GitHub</system>
+    <url>https://github.com/mira-sbs/core.mira.sbs/issues</url>
+  </issueManagement>
+
+  <scm>
+    <tag>HEAD</tag>
+    <connection>scm:git:git://github.com/mira-sbs/core.mira.sbs.git</connection>
+    <url>https://github.com/mira-sbs/core.mira.sbs</url>
+    <developerConnection>scm:git:ssh://git@github.com:mira-sbs/core.mira.sbs.git</developerConnection>
+  </scm>
+</project>
