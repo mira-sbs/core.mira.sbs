@@ -1,0 +1,8 @@
+error:
+  generic: "&4(x_x): &cunexpected error: {0}."
+  permission: "&4(;-;): &cyou do not have permission."
+  usage: "&4(x_x): &cincorrect usage.\n&e(^-^)7: syntax: &c{0}&e."
+  flag_conflict: "&4(x_x): &cyou cannot use the [-{0}] and [-{1}] flags together."
+  number:
+    format: "&4(x_x): &cplease provide a valid numerical value."
+    greater_than_zero: '&4(x_x): &cplease provide a number greater than zero for &4{0}&c.'
