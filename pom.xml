@@ -87,4 +87,13 @@
     <url>https://github.com/mira-sbs/core.mira.sbs</url>
     <developerConnection>scm:git:ssh://git@github.com:mira-sbs/core.mira.sbs.git</developerConnection>
   </scm>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.jetbrains</groupId>
+      <artifactId>annotations</artifactId>
+      <version>26.0.2</version>
+      <scope>compile</scope>
+    </dependency>
+  </dependencies>
 </project>

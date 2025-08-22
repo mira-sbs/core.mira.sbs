@@ -1,7 +1,6 @@
 package sbs.mira.core;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * a moving cog within the mira framework.
@@ -17,12 +16,12 @@ class MiraModule<Pulse extends MiraPulse<?, ?>>
   implements Breather<Pulse>
 {
   
-  private @Nullable Pulse pulse;
+  private final @NotNull Pulse pulse;
   
   protected
   MiraModule(@NotNull Pulse pulse)
   {
-    this.breathe(pulse);
+    this.pulse = pulse;
   }
   
   /**
@@ -35,21 +34,6 @@ class MiraModule<Pulse extends MiraPulse<?, ?>>
   public
   Pulse pulse()
   {
-    assert this.pulse != null;
     return this.pulse;
-  }
-  
-  @Override
-  public
-  void breathe(@NotNull Pulse pulse) throws IllegalStateException
-  {
-    if (this.pulse == null)
-    {
-      this.pulse = pulse;
-    }
-    else
-    {
-      throw new IllegalStateException("a breather may not have two pulses.");
-    }
   }
 }

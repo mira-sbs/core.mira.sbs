@@ -5,10 +5,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.craftbukkit.v1_21_R5.entity.CraftPlayer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import sbs.mira.core.util.MiraConfiguration;
-import sbs.mira.core.util.modules.ItemUtility;
-import sbs.mira.core.util.modules.StringUtility;
-import sbs.mira.core.util.modules.WorldUtility;
+import sbs.mira.core.helper.*;
 
 import java.util.Map;
 import java.util.Random;
@@ -26,62 +23,39 @@ import java.util.UUID;
  */
 public abstract
 class MiraPluginMaster<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayer<?>>
-  implements Breather<Pulse>
+  extends MiraModule<Pulse>
 {
-  private @Nullable Pulse pulse;
-  
   private final @NotNull Random rng;
   private final @NotNull TreeMap<UUID, Player> players;
   
-  private final @NotNull MiraConfiguration config;
-  private final @NotNull ItemUtility items;
-  private final @NotNull StringUtility strings;
-  private final @NotNull WorldUtility world;
+  private @Nullable MiraFileHelper files;
+  private @Nullable MiraConfiguration<Pulse> config;
+  private @Nullable MiraItemHelper items;
+  private @Nullable MiraStringHelper strings;
+  private @Nullable MiraWorldHelper world;
   
   public
-  MiraPluginMaster()
+  MiraPluginMaster( @NotNull Pulse pulse )
   {
-    this.rng = new Random(0xfdffdeadL);
-    this.players = new TreeMap<>();
-    this.config = new MiraConfiguration(this);
-    this.items = new ItemUtility(this);
-    this.strings = new StringUtility(this);
-    this.world = new WorldUtility(this);
-  }
-  
-  
-  @Override
-  public @NotNull
-  Pulse pulse() throws FlatlineException
-  {
-    if (this.pulse != null)
-    {
-      return pulse;
-    }
-    else
-    {
-      throw new FlatlineException();
-    }
-  }
-  
-  @Override
-  public
-  void breathe(@NotNull Pulse pulse) throws IllegalStateException
-  {
-    if (this.pulse == null)
-    {
-      this.pulse = pulse;
-    }
-    else
-    {
-      throw new IllegalStateException("a breather may not have two pulses.");
-    }
+    super( pulse );
+    
+    this.rng = new Random( 0xfdffdeadL );
+    this.players = new TreeMap<>( );
   }
   
   public
-  abstract
+  void breathe( )
+  {
+    this.files = new MiraFileHelper( this.pulse() );
+    this.config = new MiraConfiguration<>( this.pulse() );
+    this.items = new MiraItemHelper( this.pulse() );
+    this.strings = new MiraStringHelper( this.pulse() );
+    this.world = new MiraWorldHelper( this.pulse() );
+  }
+  
   @NotNull
-  MiraPlayer<?> declares(CraftPlayer target);
+  public abstract
+  MiraPlayer<?> declares( @NotNull CraftPlayer target );
   
   /**
    * When called, this should clear a player's inventory
@@ -89,55 +63,61 @@ class MiraPluginMaster<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayer<
    *
    * @param wp The target player.
    */
-  public
-  abstract
-  void spectating(Player wp);
-  
+  public abstract
+  void spectating( @NotNull Player wp );
   
   public
-  void destroys(UUID victim)
+  void destroys( @NotNull UUID victim )
   {
-    players.remove(victim);
-  }
-  
-  public
-  @Nullable
-  Player player(UUID target)
-  {
-    return players.get(target);
+    players.remove( victim );
   }
   
   @Nullable
   public
-  Player player(@Nullable Player target)
+  Player player( @NotNull UUID target )
   {
-    return target == null ? null : player(target.getUniqueId());
+    return players.get( target );
   }
   
+  @Nullable
   public
+  Player player( @Nullable Player target )
+  {
+    return target == null ? null : player( target.uuid( ) );
+  }
+  
   @NotNull
-  Map<UUID, Player> players()
+  public
+  Map<UUID, Player> players( )
   {
     return players;
   }
   
-  public
+  
   @NotNull
-  ItemUtility items()
+  public
+  MiraFileHelper files( )
+  {
+    return files;
+  }
+  
+  @NotNull
+  public
+  MiraItemHelper items( )
   {
     return items;
   }
   
-  public
   @NotNull
-  StringUtility strings()
+  public
+  MiraStringHelper strings( )
   {
     return strings;
   }
   
-  public
   @NotNull
-  WorldUtility world()
+  public
+  MiraWorldHelper world( )
   {
     return world;
   }
@@ -149,15 +129,15 @@ class MiraPluginMaster<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayer<
    * @param replacements replaces "{0}", "{1}" and so on with the provided.
    * @throws IllegalArgumentException message key does not exist.
    */
-  public
   @NotNull
-  String message(String key, String... replacements) throws IllegalArgumentException
+  public
+  String message( String key, String... replacements ) throws IllegalArgumentException
   {
     int i = 0;
-    String result = ChatColor.translateAlternateColorCodes('&', pulse().conf().getMessage(key));
-    while (result.contains("{" + i + "}"))
+    String result = ChatColor.translateAlternateColorCodes( '&', /*config.getMessage( key )*/"??" );
+    while ( result.contains( "{" + i + "}" ) )
     {
-      result = result.replace("{%d}".formatted(i), replacements[i]);
+      result = result.replace( "{%d}".formatted( i ), replacements[ i ] );
       i++;
     }
     return result;
@@ -169,11 +149,11 @@ class MiraPluginMaster<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayer<
    * @param comp Message to send.
    */
   public
-  void broadcastSpigotMessage(TextComponent comp)
+  void broadcastSpigotMessage( TextComponent comp )
   {
-    for (MiraPlayer<?> online : players.values())
+    for ( MiraPlayer<?> online : players.values( ) )
     {
-      online.crafter().spigot().sendMessage(comp);
+      online.crafter( ).spigot( ).sendMessage( comp );
     }
   }
 }

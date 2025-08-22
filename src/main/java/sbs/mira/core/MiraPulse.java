@@ -1,6 +1,7 @@
 package sbs.mira.core;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * [recursive wit.]
@@ -15,29 +16,73 @@ import org.jetbrains.annotations.NotNull;
 public
 class MiraPulse<Plugin extends MiraPlugin<?>, Master extends MiraPluginMaster<?, ?>>
 {
-  @NotNull
-  private final Plugin plugin;
-  @NotNull
-  private final Master master;
+  @Nullable
+  private Plugin plugin;
+  @Nullable
+  private Master master;
   
   public
-  MiraPulse(@NotNull Plugin plugin, @NotNull Master master)
+  MiraPulse( )
   {
+    this.plugin = null;
+    this.master = null;
+  }
+  
+  public
+  MiraPulse( @NotNull Plugin plugin, @NotNull Master master )
+  {
+    this.breathe( plugin, master );
+  }
+  
+  public
+  void breathe( @NotNull Plugin plugin, @NotNull Master master )
+  {
+    assert this.plugin == null && this.master == null : "already breathing you fool.";
+    
     this.plugin = plugin;
     this.master = master;
+    this.master.breathe( );
   }
   
   @NotNull
   public
-  Plugin plugin()
+  Plugin plugin( )
   {
-    return plugin;
+    if ( plugin != null )
+    {
+      return plugin;
+    }
+    else
+    {
+      throw new FlatlineException( "not yet breathing." );
+    }
   }
   
   @NotNull
   public
-  Master master()
+  Master master( )
   {
-    return master;
+    if ( master != null )
+    {
+      return master;
+    }
+    else
+    {
+      throw new FlatlineException( "not yet breathing." );
+    }
+  }
+  
+  /**
+   * just set the pulse brah?
+   */
+  public static
+  class FlatlineException
+    extends RuntimeException
+  {
+    public
+    FlatlineException( String reason )
+    {
+      super( reason );
+    }
   }
 }

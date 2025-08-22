@@ -15,18 +15,8 @@ interface Breather<Pulse extends MiraPulse<?, ?>>
   
   /**
    * @return heartbeat of mira, still going i hope.
-   * @throws FlatlineException bruh...
+   * @throws sbs.mira.core.MiraPulse.FlatlineException bruh...
    */
   @NotNull
-  Pulse pulse() throws FlatlineException;
-  
-  void breathe(@NotNull Pulse pulse) throws IllegalStateException;
-  
-  /**
-   * just set the pulse brah?
-   */
-  class FlatlineException
-    extends RuntimeException
-  {
-  }
+  Pulse pulse() throws MiraPulse.FlatlineException;
 }

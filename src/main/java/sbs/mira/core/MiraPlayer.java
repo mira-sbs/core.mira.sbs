@@ -3,7 +3,8 @@ package sbs.mira.core;
 import org.bukkit.craftbukkit.v1_21_R5.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+
+import java.util.UUID;
 
 /**
  * oh look another mira stan.
@@ -16,10 +17,9 @@ import org.jetbrains.annotations.Nullable;
  */
 public abstract
 class MiraPlayer<Pulse extends MiraPulse<?, ?>>
-  implements Breather<Pulse>
+  extends MiraModule<Pulse>
 {
   
-  private @Nullable Pulse pulse;
   protected final @NotNull CraftPlayer player;
   
   /**
@@ -29,42 +29,15 @@ class MiraPlayer<Pulse extends MiraPulse<?, ?>>
   public
   MiraPlayer(@NotNull CraftPlayer player, @NotNull Pulse pulse)
   {
-    this.pulse = pulse;
+    super(pulse);
     this.player = player;
-  }
-  
-  @Override
-  public @NotNull
-  Pulse pulse() throws FlatlineException
-  {
-    if (this.pulse != null)
-    {
-      return pulse;
-    }
-    else
-    {
-      throw new FlatlineException();
-    }
-  }
-  
-  @Override
-  public
-  void breathe(@NotNull Pulse pulse) throws IllegalStateException
-  {
-    if (this.pulse == null)
-    {
-      this.pulse = pulse;
-    }
-    else
-    {
-      throw new IllegalStateException("a breather may not have two pulses.");
-    }
   }
   
   /**
    * @see CraftPlayer
    */
-  public @NotNull
+  @NotNull
+  public
   CraftPlayer crafter()
   {
     return player;
@@ -98,5 +71,11 @@ class MiraPlayer<Pulse extends MiraPulse<?, ?>>
   String display_name()
   {
     return player.getDisplayName();
+  }
+  
+  public
+  UUID uuid()
+  {
+    return player.getUniqueId();
   }
 }

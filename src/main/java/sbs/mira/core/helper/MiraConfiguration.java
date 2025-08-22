@@ -1,13 +1,16 @@
-package sbs.mira.core.util;
+package sbs.mira.core.helper;
 
 
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import sbs.mira.pvp.framework.MiraModule;
-import sbs.mira.pvp.framework.MiraPulse;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import sbs.mira.core.MiraModule;
+import sbs.mira.core.MiraPulse;
 
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 /**
  * this class handles all procedures or functions
@@ -23,46 +26,43 @@ import java.io.InputStreamReader;
  * @since 1.0.0
  */
 public
-class MiraConfiguration
-  extends MiraModule
+class MiraConfiguration<Pulse extends MiraPulse<?, ?>>
+  extends MiraModule<Pulse>
 {
   
-  private final FileConfiguration config;
-  private FileConfiguration messages; // The internal messages.yml file.
-  /* For pretty code, values will be public in all caps. */
-  public boolean WEBSTATS_ENABLED; // Are the stats enabled?
-  public String WEBSTATS_ACTION; // Where should it HTTP POST to?
-  public String WEBSTATS_SECRET; // What's the secret password to make the script run?
-  public int WEBSTATS_POS; // The current match number.
+  private final @NotNull FileConfiguration config;
+  private @Nullable FileConfiguration messages;
+  public boolean WEBSTATS_ENABLED;
+  public @NotNull String WEBSTATS_ACTION;
+  public @NotNull String WEBSTATS_SECRET;
+  public int WEBSTATS_POS;
   
   /**
-   * Config utility constructor.
-   * We need to link back to the manager and plugin.
    *
-   * @param main The supercontroller.
+   * @param pulse
    */
   public
-  MiraConfiguration(MiraPulse main)
+  MiraConfiguration(@NotNull Pulse pulse)
   {
-    super(main);
+    super(pulse);
     
     // Save the default config in case it has never existed before.
-    main.plugin().saveDefaultConfig();
+    this.pulse().plugin().saveDefaultConfig();
     
     // Reload and assign the file config.
-    main.plugin().reloadConfig();
-    config = main.plugin().getConfig();
+    this.pulse().plugin().reloadConfig();
+    config = this.pulse().plugin().getConfig();
     
     try
     {
       messages = YamlConfiguration.loadConfiguration(new InputStreamReader(
-        mira().plugin().getResource("messages.yml"),
-        StandardCharsets.UTF_8
+        this.pulse().plugin().getResource("messages.yml"),
+                                                                           StandardCharsets.UTF_8
       ));
     }
     catch (Exception any)
     {
-      main.plugin().log("The messages were not able to be loaded.");
+      this.pulse().plugin().log("The messages were not able to be loaded.");
       Bukkit.shutdown();
     }
     
@@ -75,7 +75,7 @@ class MiraConfiguration
     }
     catch (Exception any)
     {
-      main.plugin().log("The configuration was not able to be loaded.");
+      this.pulse().plugin().log("The configuration was not able to be loaded.");
       WEBSTATS_ENABLED = false;
       WEBSTATS_ACTION = "";
       WEBSTATS_SECRET = "";
@@ -84,21 +84,21 @@ class MiraConfiguration
   }
   
   /**
-   * Increment the match position, or ID.
+   * increment the match position.
    */
   public
   void incrementPosition()
   {
     WEBSTATS_POS++; // Increment the local value.
     config.set("webstats.position", WEBSTATS_POS); // Set the new position in the config.
-    mira().plugin().saveConfig(); // Save the config.
+    this.pulse().plugin().saveConfig(); // Save the config.
   }
   
   /**
-   * Returns a message value from a selected key.
+   * returns a message value from a selected key.
    *
-   * @param key The key.
-   * @return The value.
+   * @param key the key.
+   * @return the value.
    */
   public
   String getMessage(String key)

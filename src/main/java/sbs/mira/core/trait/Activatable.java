@@ -1,4 +1,4 @@
-package sbs.mira.core.stored;
+package sbs.mira.core.trait;
 
 /**
  * This interface adds an extra layer of selection when

@@ -9,9 +9,9 @@ import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionDefault;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 
 /**
@@ -28,56 +28,41 @@ class MiraPlugin<Pulse extends MiraPulse<?, ?>>
   extends JavaPlugin
   implements Breather<Pulse>
 {
+  private final @NotNull Pulse pulse;
+  private final @NotNull CommandsManager<CommandSender> commands_manager;
+  private final @NotNull List<Class<? extends MiraModule<Pulse>>> module_classes;
   
-  @Nullable
-  private Pulse pulse;
-  
-  @NotNull
-  private final CommandsManager<CommandSender> commands_manager = new CommandsManager<>()
+  public
+  MiraPlugin( @NotNull Pulse pulse )
   {
+    super( );
     
-    /***
-     * @see Permission
-     */
-    @Override
-    public
-    boolean hasPermission(CommandSender sender, String perm)
+    this.pulse = pulse;
+    this.commands_manager = new CommandsManager<>( )
     {
-      Permission permission = new Permission(perm, PermissionDefault.FALSE);
-      return sender instanceof ConsoleCommandSender || sender.hasPermission(permission);
-    }
-  };
-  
-  
-  private final ArrayList<Class<? extends MiraModule<Pulse>>> module_classes = new ArrayList<>();
-  
-  
-  @Override
-  public @NotNull
-  Pulse pulse() throws FlatlineException
-  {
-    if (this.pulse != null)
-    {
-      return pulse;
-    }
-    else
-    {
-      throw new FlatlineException();
-    }
+      
+      /***
+       * @see Permission
+       */
+      @Override
+      public
+      boolean hasPermission( CommandSender sender, String perm )
+      {
+        Permission permission = new Permission( perm, PermissionDefault.FALSE );
+        return sender instanceof ConsoleCommandSender || sender.hasPermission( permission );
+      }
+    };
+    this.module_classes = new ArrayList<>( );
   }
   
+  
   @Override
+  @NotNull
   public
-  void breathe(@NotNull Pulse pulse) throws IllegalStateException
+  Pulse pulse( ) throws MiraPulse.FlatlineException
   {
-    if (this.pulse == null)
-    {
-      this.pulse = pulse;
-    }
-    else
-    {
-      throw new IllegalStateException("a breather may not have two pulses.");
-    }
+    return pulse;
+    
   }
   
   /**
@@ -87,9 +72,9 @@ class MiraPlugin<Pulse extends MiraPulse<?, ?>>
    * @see java.util.logging.Logger
    */
   public
-  void log(String message)
+  void log( String message )
   {
-    getLogger().log(Level.INFO, "[war] " + message);
+    getLogger( ).log( Level.INFO, "[war] " + message );
   }
   
   /**
@@ -99,10 +84,10 @@ class MiraPlugin<Pulse extends MiraPulse<?, ?>>
    * @see com.sk89q.minecraft.util.commands.Command
    */
   protected
-  void register_module(Class<? extends MiraModule<Pulse>> module_class)
+  void register_module( Class<? extends MiraModule<Pulse>> module_class )
   {
     // Add the class so it will be initialised later.
-    module_classes.add(module_class);
+    module_classes.add( module_class );
   }
   
   /**
@@ -111,15 +96,15 @@ class MiraPlugin<Pulse extends MiraPulse<?, ?>>
    * @see MiraPlugin#module_classes
    */
   protected
-  void register_module_commands()
+  void register_module_commands( )
   {
-    assert !module_classes.isEmpty();
+    assert !module_classes.isEmpty( );
     
-    commands_manager.setInjector(new SimpleInjector(pulse()));
+    commands_manager.setInjector( new SimpleInjector( pulse( ) ) );
     
-    CommandsManagerRegistration registration = new CommandsManagerRegistration(this, commands_manager);
+    CommandsManagerRegistration registration = new CommandsManagerRegistration( this, commands_manager );
     
-    module_classes.forEach(registration::register);
+    module_classes.forEach( registration::register );
   }
   
   /**
@@ -140,46 +125,50 @@ class MiraPlugin<Pulse extends MiraPulse<?, ?>>
     try
     {
       // Execute it through sk89q's command processor.
-      commands_manager.execute(command.getName(), arguments, sender, sender);
+      commands_manager.execute( command.getName( ), arguments, sender, sender );
     }
-    catch (CommandPermissionsException e)
+    catch ( CommandPermissionsException e )
     {
       // No permission?
-      sender.sendMessage(pulse().master().message("command.validation.error.permission"));
+      sender.sendMessage( pulse( ).master( ).message( "command.validation.error.permission" ) );
     }
-    catch (MissingNestedCommandException e)
+    catch ( MissingNestedCommandException e )
     {
-      sender.sendMessage(pulse().master().message("command.validation.error.generic", e.getUsage()));
+      sender.sendMessage( pulse( ).master( ).message( "command.validation.error.generic", e.getUsage( ) ) );
     }
-    catch (CommandUsageException e)
+    catch ( CommandUsageException e )
     {
-      sender.sendMessage(pulse().master().message("command.validation.error.usage", e.getMessage(), e.getUsage()));
+      sender.sendMessage( pulse( )
+                            .master( )
+                            .message( "command.validation.error.usage", e.getMessage( ), e.getUsage( ) ) );
     }
-    catch (WrappedCommandException e)
+    catch ( WrappedCommandException e )
     {
-      if (e.getCause() instanceof NumberFormatException)
+      if ( e.getCause( ) instanceof NumberFormatException )
       {
-        sender.sendMessage(pulse().master().message("command.validation.error.number.format"));
+        sender.sendMessage( pulse( ).master( ).message( "command.validation.error.number.format" ) );
       }
       else
       {
-        sender.sendMessage(pulse()
-                             .master()
-                             .message("command.validation.error.generic", "unknown error: " + e.getMessage()));
+        sender.sendMessage( pulse( )
+                              .master( )
+                              .message( "command.validation.error.generic", "unknown error: " + e.getMessage( ) ) );
         //noinspection CallToPrintStackTrace
-        e.printStackTrace();
+        e.printStackTrace( );
       }
     }
-    catch (CommandException e)
+    catch ( CommandException e )
     {
-      sender.sendMessage(pulse().master().message("command.validation.error.generic", e.getMessage()));
+      sender.sendMessage( pulse( ).master( ).message( "command.validation.error.generic", e.getMessage( ) ) );
+      e.printStackTrace( );
     }
+    
     return true;
   }
   
   public
-  boolean has_permission(@NotNull CommandSender sender, @NotNull String perm)
+  boolean has_permission( @NotNull CommandSender sender, @NotNull String perm )
   {
-    return commands_manager.hasPermission(sender, perm);
+    return sender instanceof ConsoleCommandSender || sender.isOp( ) || commands_manager.hasPermission( sender, perm );
   }
 }
