@@ -17,6 +17,7 @@ import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
 import sbs.mira.core.model.MiraPlayerModel;
+import sbs.mira.core.model.match.MiraGameModeModel;
 import sbs.mira.core.model.match.MiraGameModeType;
 
 import java.util.*;
@@ -46,6 +47,16 @@ class MiraMapModel
   extends MiraModel<MiraPulse<?, ?>>
   implements Listener
 {
+  /*—[map attributes]—————————————————————————————————————————————————————————*/
+  
+  private final @NotNull Set<UUID> creators;
+  private @Nullable String label;
+  private @Nullable String display_name;
+  private final @NotNull Set<MiraGameModeType> allowed_game_mode_types;
+  private final @NotNull Map<String, MiraTeamModel> teams;
+  private final @NotNull Map<String, ArrayList<Position>> team_spawn_positions;
+  protected @Nullable Position spectator_spawn_position;
+  
   /*—[rules / limits]—————————————————————————————————————————————————————————*/
   
   // allows players to take physical PvP damage.
@@ -74,19 +85,13 @@ class MiraMapModel
   
   private final @NotNull Set<Material> excluded_death_drops;
   
-  /*—[game attributes]————————————————————————————————————————————————————————*/
-  
-  private final @NotNull Set<UUID> creators;
-  private @Nullable String label;
-  private @Nullable String display_name;
-  private final @NotNull Set<MiraGameModeType> allowed_game_mode_types;
-  private final @NotNull Map<String, MiraTeamModel> teams;
-  private final @NotNull Map<String, ArrayList<Position>> team_spawn_positions;
-  protected @Nullable Position spectator_spawn_position;
-  
   private final @NotNull List<Object> objectives;
   
+  /*—[match attributes]———————————————————————————————————————————————————————*/
+  
   private boolean active;
+  
+  private @Nullable MiraGameModeModel game_mode;
   
   /*—[interface]——————————————————————————————————————————————————————————————*/
   
@@ -120,15 +125,18 @@ class MiraMapModel
     this.active = false;
   }
   
+  /*——————————————————————————————————————————————————————————————————————————*/
+  
   /**
-   * implementations should define all rules / flags within this method (if applicable).
+   * implementations should define all rules / flags within this procedure
+   * (if applicable).
    */
   protected abstract
   void define_rules( );
   
   /**
-   * Extend this procedure also to define team spawns after
-   * defining the attributes in the above abstract procedure.
+   * implementations should define all spawn positions / regions within this
+   * procedure.
    */
   protected abstract
   void define_spawns( );
@@ -360,13 +368,23 @@ class MiraMapModel
   public
   boolean active( )
   {
-    return active;
+    return this.active;
+  }
+  
+  /*——————————————————————————————————————————————————————————————————————————*/
+  
+  public @NotNull
+  MiraGameModeModel game_mode( )
+  {
+    assert this.game_mode != null;
+    
+    return this.game_mode;
   }
   
   /*—[match lifecycle]————————————————————————————————————————————————————————*/
   
   public
-  void activate( )
+  void activate( @NotNull MiraGameModeModel game_mode )
   {
     if ( this.active )
     {
@@ -375,6 +393,7 @@ class MiraMapModel
     
     this.server( ).getPluginManager( ).registerEvents( this, this.pulse( ).plugin( ) );
     this.active = true;
+    this.game_mode = game_mode;
     
     /*for ( Activatable obj : objectives( ) )
     {

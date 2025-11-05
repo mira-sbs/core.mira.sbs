@@ -16,15 +16,13 @@ import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import sbs.mira.core.Breather;
 import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
+import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.model.map.MiraMapModel;
 import sbs.mira.core.model.map.MiraTeamModel;
 import sbs.mira.core.model.map.Position;
 import sbs.mira.core.utility.MiraStringUtility;
-import sbs.mira.pvp.MiraVersePlayer;
-import sbs.mira.pvp.MiraVersePulse;
 
 import java.util.*;
 
@@ -40,20 +38,32 @@ import java.util.*;
 public abstract
 class MiraGameModeModel
   extends MiraModel<MiraPulse<?, ?>>
-  implements Listener, Breather<MiraVersePulse>
+  implements Listener
 {
-  private @Nullable MiraMapModel map;
+  /*—[game mode attributes]———————————————————————————————————————————————————*/
+  
+  private @Nullable String label;
+  private @Nullable String display_name;
+  private @Nullable String grammar;
+  
+  private @Nullable String description_offense;
+  private @Nullable String description_defense;
+  
+  private final @NotNull Map<String, List<Position>> team_spawn_coordinates;
+  
+  /*—[match runtime attributes]———————————————————————————————————————————————*/
+  
   private @Nullable BukkitTask global_task;
   private int seconds_elapsed;
   
   private final @NotNull List<String> event_log;
+  
   private final @NotNull Map<UUID, Integer> kills;
   private final @NotNull Map<UUID, Integer> deaths;
   private int environmental_deaths;
   
-  private final @NotNull Map<String, ArrayList<Position>> team_spawn_coordinates;
-  private @Nullable Scoreboard bukkit_scoreboard;
-  private @Nullable Team spectator_bukkit_team;
+  private @Nullable Scoreboard scoreboard;
+  private @Nullable Team team_spectators;
   
   protected boolean active;
   protected boolean permanent_death;
@@ -61,7 +71,7 @@ class MiraGameModeModel
   protected @Nullable String winner;
   
   public
-  MiraGameModeModel( MiraVersePulse pulse )
+  MiraGameModeModel( MiraPulse<?, ?> pulse )
   {
     super( pulse );
     
@@ -73,28 +83,55 @@ class MiraGameModeModel
   }
   
   public abstract
-  void breathe( );
+  void activate( @NotNull List<MiraTeamModel> teams );
   
   public abstract
   void refresh_scoreboard( );
   
-  public abstract
-  String label( );
+  protected
+  void label( @NotNull String label )
+  {
+    this.label = label;
+  }
   
-  public abstract
-  String display_name( );
+  protected @NotNull
+  String label( )
+  {
+    return this.label;
+  }
   
-  public abstract
-  String objective_description_offense( );
+  protected
+  void display_name( @NotNull String display_name )
+  {
+    this.display_name = display_name;
+  }
   
-  public abstract
-  String objective_description_defense( );
+  protected @NotNull
+  String display_name( )
+  {
+    return this.display_name;
+  }
   
   /**
    * @return correct preceding grammar to verbally objectify the `label`, i.e. "a TDM" - "an FFA".
    */
-  public abstract
-  String grammar( );
+  protected
+  void grammar( @NotNull String grammar )
+  {
+    this.grammar = grammar;
+  }
+  
+  protected
+  void description_offense( @NotNull String description_offense )
+  {
+    this.description_offense = description_offense;
+  }
+  
+  protected
+  void description_defense( @NotNull String description_defense )
+  {
+    this.description_defense = description_defense;
+  }
   
   /**
    * Logs an event. This can be anything.
@@ -123,9 +160,9 @@ class MiraGameModeModel
     Player bukkit_killed = event.getEntity( );
     @Nullable Player bukkit_killer = bukkit_killed.getKiller( );
     
-    @NotNull MiraVersePlayer mira_killed =
+    @NotNull MiraPlayerModel mira_killed =
       Objects.requireNonNull( this.pulse( ).model( ).player( bukkit_killed.getUniqueId( ) ) );
-    @Nullable MiraVersePlayer mira_killer =
+    @Nullable MiraPlayerModel mira_killer =
       bukkit_killer == null ? null : this.pulse( ).model( ).player( bukkit_killer.getUniqueId( ) );
     
     @Nullable String death_message = event.getDeathMessage( );
@@ -184,19 +221,6 @@ class MiraGameModeModel
   
   /**
    * event handler.
-   * fires when a player dies whilst participating in the active match (running this game mode).
-   * this event is implicitly fired by `on_kill` for the `killed` player.
-   *
-   * @param killed the subject player who died.
-   */
-  public
-  void on_death( @NotNull MiraVersePlayer killed )
-  {
-    this.deaths.put( killed.uuid( ), this.deaths.get( killed.uuid( ) ) + 1 );
-  }
-  
-  /**
-   * event handler.
    * fires when a player kills another player in the active match (running this game mode).
    * implicitly fires the `on_death` event for the `killed` player.
    *
@@ -204,11 +228,11 @@ class MiraGameModeModel
    * @param killer the player who killed the dead player.
    */
   public
-  void on_kill( @NotNull MiraVersePlayer killed, @NotNull MiraVersePlayer killer )
+  void on_kill( @NotNull MiraPlayerModel<?> killed, @NotNull MiraPlayerModel<?> killer )
   {
     this.kills.put( killer.uuid( ), this.kills.get( killer.uuid( ) ) + 1 );
     
-    on_death( killed );
+    this.on_death( killed );
   }
   
   /*—[respawn handlers]———————————————————————————————————————————————————————*/
@@ -308,7 +332,7 @@ class MiraGameModeModel
     bukkit_player.setGameMode( GameMode.SURVIVAL );
     bukkit_player.setFallDistance( 0F );
     
-    this.spectator_bukkit_team.removeEntry( bukkit_player.getName( ) );
+    this.team_spectators.removeEntry( bukkit_player.getName( ) );
     
     MiraTeamModel mira_team = mira_player.team( );
     mira_team.bukkit_team( ).addEntry( mira_player.name( ) );
@@ -432,7 +456,7 @@ class MiraGameModeModel
     bukkit_player.setGameMode( GameMode.CREATIVE );
     
     mira_team.bukkit_team( ).removeEntry( mira_player.name( ) );
-    this.spectator_bukkit_team.addEntry( mira_player.name( ) );
+    this.team_spectators.addEntry( mira_player.name( ) );
     
     this.pulse( ).model( ).items( ).clear( mira_player );
     //this.pulse().master().giveSpectatorKit( mira_player );
@@ -441,21 +465,6 @@ class MiraGameModeModel
   }
   
   /*—[match lifecycle handlers]———————————————————————————————————————————————*/
-  
-  /**
-   * event handler.
-   * fires when the criteria that ends the game mode has been fulfilled.
-   * i.e. time running out in `tdm`, reaching score cap in `ffa`, etc.
-   */
-  private
-  void on_complete( )
-  {
-    this.active = false;
-    this.pulse( ).plugin( ).getServer( ).getPluginManager( ).callEvent( new MiraMatchEndEvent( ) );
-    
-    // fixme: call this in a `MatchEndEvent`^^ handler??
-    this.pulse( ).model( ).match( ).matchEnd( );
-  }
   
   /**
    * event handler.
@@ -568,12 +577,12 @@ class MiraGameModeModel
       ( HashMap<String, ArrayList<SerializedLocation>> ) map( ).teamSpawns.clone( );*/
     
     this.active = true;
-    this.bukkit_scoreboard =
+    this.scoreboard =
       Objects.requireNonNull( this.pulse( ).plugin( ).getServer( ).getScoreboardManager( ) ).getNewScoreboard( );
     
     for ( MiraTeamModel mira_team : this.map( ).teams( ) )
     {
-      Team bukkit_team = bukkit_scoreboard.registerNewTeam( mira_team.label( ) );
+      Team bukkit_team = scoreboard.registerNewTeam( mira_team.label( ) );
       mira_team.bukkit_team( bukkit_team );
       bukkit_team.setCanSeeFriendlyInvisibles( true );
       // todo: allow friendly fire lmfao? like hit each other for no damage maybe?
@@ -581,14 +590,14 @@ class MiraGameModeModel
       bukkit_team.setPrefix( String.valueOf( mira_team.colour( ) ) );
     }
     
-    this.spectator_bukkit_team = bukkit_scoreboard.registerNewTeam( "spectators" );
-    this.spectator_bukkit_team.setCanSeeFriendlyInvisibles( true );
-    this.spectator_bukkit_team.setAllowFriendlyFire( false );
-    this.spectator_bukkit_team.setPrefix( String.valueOf( ChatColor.LIGHT_PURPLE ) );
+    this.team_spectators = scoreboard.registerNewTeam( "spectators" );
+    this.team_spectators.setCanSeeFriendlyInvisibles( true );
+    this.team_spectators.setAllowFriendlyFire( false );
+    this.team_spectators.setPrefix( String.valueOf( ChatColor.LIGHT_PURPLE ) );
     
     for ( MiraVersePlayer player : this.pulse( ).model( ).players( ).values( ) )
     {
-      this.spectator_bukkit_team.addEntry( player.name( ) );
+      this.team_spectators.addEntry( player.name( ) );
     }
     
     this.global_task = Bukkit.getScheduler( ).runTaskTimer(
@@ -659,10 +668,10 @@ class MiraGameModeModel
     //publishes_statistics( );
   }
   
-  public
+  public @NotNull
   Scoreboard scoreboard( )
   {
-    return bukkit_scoreboard;
+    return this.scoreboard;
   }
   
   /**
