@@ -1,9 +1,9 @@
-package sbs.mira.core.module;
+package sbs.mira.core.model;
 
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.jetbrains.annotations.NotNull;
-import sbs.mira.core.MiraModule;
+import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
 
 /***
@@ -14,8 +14,8 @@ import sbs.mira.core.MiraPulse;
  * @see MiraPulse
  */
 public abstract
-class MiraEventModule<Event extends org.bukkit.event.Event, Pulse extends MiraPulse<?, ?>>
-  extends MiraModule<Pulse>
+class MiraEventHandlerModel<Event extends org.bukkit.event.Event, Pulse extends MiraPulse<?, ?>>
+  extends MiraModel<Pulse>
   implements Listener
 {
   /**
@@ -23,7 +23,7 @@ class MiraEventModule<Event extends org.bukkit.event.Event, Pulse extends MiraPu
    * @param pulse
    */
   protected
-  MiraEventModule(@NotNull Pulse pulse)
+  MiraEventHandlerModel( @NotNull Pulse pulse)
   {
     super(pulse);
   }

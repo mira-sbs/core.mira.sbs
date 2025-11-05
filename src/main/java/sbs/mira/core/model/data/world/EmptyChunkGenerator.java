@@ -1,4 +1,4 @@
-package sbs.mira.core.helper.world;
+package sbs.mira.core.model.data.world;
 
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -18,7 +18,7 @@ import java.util.Random;
  */
 
 public
-class HyperBreathChunkGenerator
+class EmptyChunkGenerator
   extends ChunkGenerator
 {
   
@@ -38,6 +38,6 @@ class HyperBreathChunkGenerator
   public
   ChunkGenerator getDefaultWorldGenerator( String worldName, String id )
   {
-    return new HyperBreathChunkGenerator( );
+    return new EmptyChunkGenerator( );
   }
 }

@@ -1,12 +1,8 @@
 package sbs.mira.core;
 
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
+import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
-
-import app.ashcon.intake.bukkit.BukkitIntake;
-import app.ashcon.intake.bukkit.graph.BasicBukkitCommandGraph;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -39,10 +35,18 @@ class MiraPlugin<Pulse extends MiraPulse<?, ?>>
   @Override
   @NotNull
   public
-  Pulse pulse( ) throws MiraPulse.FlatlineException
+  Pulse pulse( )
+  throws MiraPulse.FlatlineException
   {
     return pulse;
     
+  }
+  
+  protected
+  String description( )
+  {
+    PluginDescriptionFile description = this.getDescription( );
+    return "%s v%s".formatted( description.getName( ), description.getVersion( ) );
   }
   
   /**
@@ -54,6 +58,6 @@ class MiraPlugin<Pulse extends MiraPulse<?, ?>>
   public
   void log( String message )
   {
-    getLogger( ).log( Level.INFO, "[may i reflect again?] " + message );
+    this.getLogger( ).log( Level.INFO, "[may i reflect again?] " + message );
   }
 }

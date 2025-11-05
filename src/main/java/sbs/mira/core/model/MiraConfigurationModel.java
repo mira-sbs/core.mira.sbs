@@ -1,4 +1,4 @@
-package sbs.mira.core.module;
+package sbs.mira.core.model;
 
 
 import org.bukkit.ChatColor;
@@ -6,7 +6,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import sbs.mira.core.MiraModule;
+import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
 
 import java.io.InputStreamReader;
@@ -29,13 +29,12 @@ import java.util.TreeMap;
  * @since 1.0.0
  */
 public
-final
-class MiraConfigurationModule<Pulse extends MiraPulse<?, ?>>
-  extends MiraModule<Pulse>
+class MiraConfigurationModel<Pulse extends MiraPulse<?, ?>>
+  extends MiraModel<Pulse>
 {
   
-  protected final @NotNull FileConfiguration file_config;
-  protected final Map<String, String> mapping;
+  private final @NotNull FileConfiguration file_config;
+  private final Map<String, String> mapping;
   
   /**
    * instantiates with a `FileConfiguration` directly provided.
@@ -44,7 +43,7 @@ class MiraConfigurationModule<Pulse extends MiraPulse<?, ?>>
    * @param file_config the file configuration - usually a bukkit plugin `config.yml` file.
    */
   public
-  MiraConfigurationModule( @NotNull Pulse pulse, @NotNull FileConfiguration file_config )
+  MiraConfigurationModel( @NotNull Pulse pulse, @NotNull FileConfiguration file_config )
   {
     super( pulse );
     
@@ -59,23 +58,20 @@ class MiraConfigurationModule<Pulse extends MiraPulse<?, ?>>
    * @param config_resource_name the name of the embedded resource file in the plugin `.jar`.
    */
   public
-  MiraConfigurationModule( @NotNull Pulse pulse, @NotNull String config_resource_name )
+  MiraConfigurationModel( @NotNull Pulse pulse, @NotNull String config_resource_name )
   {
     super( pulse );
     
     this.mapping = new TreeMap<>( );
     
-    this.file_config = YamlConfiguration.loadConfiguration(
-      new InputStreamReader(
-        Objects.requireNonNull( this.pulse( ).plugin( ).getResource( config_resource_name ) ),
-        StandardCharsets.UTF_8
-      )
-    );
+    this.file_config = YamlConfiguration.loadConfiguration( new InputStreamReader(
+      Objects.requireNonNull( this.pulse( ).plugin( ).getResource( config_resource_name ) ),
+      StandardCharsets.UTF_8
+    ) );
     
-    this
-      .pulse( )
-      .plugin( )
-      .log( "(^-^) successfully loaded file configuration '%s'".formatted( config_resource_name ) );
+    this.pulse( )
+        .plugin( )
+        .log( "(^-^) successfully loaded file configuration '%s'".formatted( config_resource_name ) );
   }
   
   /**
@@ -85,8 +81,7 @@ class MiraConfigurationModule<Pulse extends MiraPulse<?, ?>>
    * @param key the yaml key.
    * @return the value associated with the key (with color coding applied).
    */
-  public
-  @Nullable
+  public @Nullable
   String get( @NotNull String key )
   {
     if ( !mapping.containsKey( key ) )

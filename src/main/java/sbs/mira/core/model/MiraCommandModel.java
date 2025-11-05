@@ -1,8 +1,7 @@
-package sbs.mira.core.module;
+package sbs.mira.core.model;
 
-import org.bukkit.event.EventHandler;
 import org.jetbrains.annotations.NotNull;
-import sbs.mira.core.MiraModule;
+import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
 
 /***
@@ -13,15 +12,15 @@ import sbs.mira.core.MiraPulse;
  * @see MiraPulse
  */
 public abstract
-class MiraCommandModule<Pulse extends MiraPulse<?, ?>>
-  extends MiraModule<Pulse>
+class MiraCommandModel<Pulse extends MiraPulse<?, ?>>
+  extends MiraModel<Pulse>
 {
   /**
    *
    * @param pulse
    */
   protected
-  MiraCommandModule( @NotNull Pulse pulse )
+  MiraCommandModel( @NotNull Pulse pulse )
   {
     super( pulse );
   }

@@ -2,6 +2,7 @@ package sbs.mira.core;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import sbs.mira.core.model.MiraPluginModel;
 
 /**
  * [recursive wit.]
@@ -14,34 +15,32 @@ import org.jetbrains.annotations.Nullable;
  * @since 1.0.0
  */
 public
-class MiraPulse<Plugin extends MiraPlugin<?>, Master extends MiraPluginMaster<?, ?>>
+class MiraPulse<Plugin extends MiraPlugin<?>, Model extends MiraPluginModel<?, ?>>
 {
   @Nullable
-  private Plugin plugin;
+  protected Plugin plugin;
   @Nullable
-  private Master master;
+  protected Model model;
   
   public
   MiraPulse( )
   {
     this.plugin = null;
-    this.master = null;
+    this.model = null;
   }
   
   public
-  MiraPulse( @NotNull Plugin plugin, @NotNull Master master )
+  MiraPulse( @NotNull Plugin plugin, @NotNull Model model )
   {
-    this.breathe( plugin, master );
+    this.breathe( plugin, model );
   }
   
   public
-  void breathe( @NotNull Plugin plugin, @NotNull Master master )
+  void breathe( @NotNull Plugin plugin, @NotNull Model model )
   {
-    assert this.plugin == null && this.master == null : "already breathing you fool.";
-    
     this.plugin = plugin;
-    this.master = master;
-    this.master.breathe( );
+    this.model = model;
+    this.model.breathe( );
   }
   
   @NotNull
@@ -60,11 +59,11 @@ class MiraPulse<Plugin extends MiraPlugin<?>, Master extends MiraPluginMaster<?,
   
   @NotNull
   public
-  Master master( )
+  Model model( )
   {
-    if ( master != null )
+    if ( model != null )
     {
-      return master;
+      return model;
     }
     else
     {

@@ -1,8 +1,10 @@
-package sbs.mira.core;
+package sbs.mira.core.model;
 
 import org.bukkit.craftbukkit.v1_21_R6.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import sbs.mira.core.MiraModel;
+import sbs.mira.core.MiraPulse;
 
 import java.util.UUID;
 
@@ -16,8 +18,8 @@ import java.util.UUID;
  * @since 1.0.0
  */
 public abstract
-class MiraPlayer<Pulse extends MiraPulse<?, ?>>
-  extends MiraModule<Pulse>
+class MiraPlayerModel<Pulse extends MiraPulse<?, ?>>
+  extends MiraModel<Pulse>
 {
   
   protected final @NotNull CraftPlayer player;
@@ -27,30 +29,34 @@ class MiraPlayer<Pulse extends MiraPulse<?, ?>>
    * @param pulse  anchorrr.
    */
   public
-  MiraPlayer(@NotNull CraftPlayer player, @NotNull Pulse pulse)
+  MiraPlayerModel( @NotNull CraftPlayer player, @NotNull Pulse pulse )
   {
-    super(pulse);
+    super( pulse );
     this.player = player;
   }
   
   /**
    * @see CraftPlayer
    */
-  @NotNull
-  public
-  CraftPlayer crafter()
+  public @NotNull
+  CraftPlayer crafter( )
   {
     return player;
   }
   
+  public @NotNull
+  UUID uuid( )
+  {
+    return this.player.getUniqueId( );
+  }
+  
   /**
-   * @param message The message to send to the player.
-   * @see Player#sendMessage(String)
+   * @see org.bukkit.entity.Player#sendMessage(String)
    */
   public
-  void dm(String message)
+  void messages( @NotNull String content )
   {
-    player.sendMessage(message);
+    this.crafter( ).sendMessage( content );
   }
   
   /**
@@ -58,9 +64,9 @@ class MiraPlayer<Pulse extends MiraPulse<?, ?>>
    * @see Player#getName()
    */
   public
-  String name()
+  String name( )
   {
-    return player.getName();
+    return player.getName( );
   }
   
   /**
@@ -68,14 +74,8 @@ class MiraPlayer<Pulse extends MiraPulse<?, ?>>
    * @see Player#getName()
    */
   public
-  String display_name()
+  String display_name( )
   {
-    return player.getDisplayName();
-  }
-  
-  public
-  UUID uuid()
-  {
-    return player.getUniqueId();
+    return player.getDisplayName( );
   }
 }

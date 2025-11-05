@@ -1,4 +1,4 @@
-package sbs.mira.core.helper;
+package sbs.mira.core.model.data;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
@@ -11,8 +11,8 @@ import org.bukkit.inventory.meta.PotionMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import sbs.mira.core.MiraModule;
-import sbs.mira.core.MiraPlayer;
+import sbs.mira.core.MiraModel;
+import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.MiraPulse;
 
 import java.util.ArrayList;
@@ -31,7 +31,7 @@ import java.util.ArrayList;
 @SuppressWarnings("unused")
 public
 class MiraItemHelper
-  extends MiraModule<MiraPulse<?, ?>>
+  extends MiraModel<MiraPulse<?, ?>>
 {
   
   public
@@ -72,7 +72,7 @@ class MiraItemHelper
    * @see Player
    */
   public
-  void clear(MiraPlayer<?> wp)
+  void clear( MiraPlayerModel<?> wp)
   {
     Player target = wp.crafter();
     target.closeInventory();
@@ -246,7 +246,7 @@ class MiraItemHelper
     PotionEffect effect = new PotionEffect(type, duration, amplifier); // Create the custom effect.
     meta.addCustomEffect(effect, true); // Add the custom effect.
     meta.setDisplayName(ChatColor.WHITE + "Potion of " + pulse()
-      .master()
+      .model( )
       .strings()
       .potionEffect(effect)); // Don't show it as uncraftable.
     POTION.setItemMeta(meta); // Apply our changes!
@@ -269,7 +269,7 @@ class MiraItemHelper
     PotionEffect effect = new PotionEffect(type, duration, amplifier);
     meta.addCustomEffect(effect, true);
     meta.setColor(type.getColor());
-    meta.setDisplayName(ChatColor.WHITE + "Potion of " + pulse().master().strings().potionEffect(effect));
+    meta.setDisplayName(ChatColor.WHITE + "Potion of " + pulse().model( ).strings( ).potionEffect( effect ) );
     ARROW.setItemMeta(meta);
     return ARROW;
   }

@@ -1,4 +1,5 @@
 error:
+  non_player: "&4(o_O): &cyou cannot instruct this command on yourself without a physical forme."
   generic: "&4(x_x): &cunexpected error: {0}."
   permission: "&4(;-;): &cyou do not have permission."
   usage: "&4(x_x): &cincorrect usage.\n&e(^-^)7: syntax: &c{0}&e."

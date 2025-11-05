@@ -1,13 +1,12 @@
-package sbs.mira.core;
+package sbs.mira.core.model;
 
 import org.bukkit.craftbukkit.v1_21_R6.entity.CraftPlayer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import sbs.mira.core.helper.MiraFileHelper;
-import sbs.mira.core.helper.MiraItemHelper;
-import sbs.mira.core.helper.MiraStringHelper;
-import sbs.mira.core.helper.MiraWorldHelper;
-import sbs.mira.core.module.MiraConfigurationModule;
+import sbs.mira.core.MiraModel;
+import sbs.mira.core.MiraPulse;
+import sbs.mira.core.model.data.MiraItemHelper;
+import sbs.mira.core.model.data.MiraWorldDataModel;
 
 import java.util.Map;
 import java.util.Random;
@@ -24,21 +23,19 @@ import java.util.UUID;
  * @since 1.0.0
  */
 public abstract
-class MiraPluginMaster<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayer<?>>
-  extends MiraModule<Pulse>
+class MiraPluginModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayerModel<?>>
+  extends MiraModel<Pulse>
 {
-  private final @NotNull Random rng;
+  public final @NotNull Random rng;
   private final @NotNull TreeMap<UUID, Player> players;
   
-  private @Nullable MiraConfigurationModule<Pulse> core_config;
-  private @Nullable MiraConfigurationModule<Pulse> core_messages;
-  private @Nullable MiraFileHelper files;
+  private @Nullable MiraConfigurationModel<Pulse> core_config;
+  private @Nullable MiraConfigurationModel<Pulse> core_messages;
   private @Nullable MiraItemHelper items;
-  private @Nullable MiraStringHelper strings;
-  private @Nullable MiraWorldHelper world;
+  private @Nullable MiraWorldDataModel world;
   
   public
-  MiraPluginMaster( @NotNull Pulse pulse )
+  MiraPluginModel( @NotNull Pulse pulse )
   {
     super( pulse );
     
@@ -53,19 +50,19 @@ class MiraPluginMaster<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayer<
     this.pulse( ).plugin( ).saveDefaultConfig( );
     this.pulse( ).plugin( ).reloadConfig( );
     
-    this.core_config = new MiraConfigurationModule<>( this.pulse( ), this.pulse( ).plugin( ).getConfig( ) );
-    this.core_messages = new MiraConfigurationModule<>( this.pulse( ), "core_messages.yml" );
+    this.core_config = new MiraConfigurationModel<>(
+      this.pulse( ),
+      this.pulse( ).plugin( ).getConfig( ) );
+    this.core_messages = new MiraConfigurationModel<>( this.pulse( ), "core_messages.yml" );
     
-    this.files = new MiraFileHelper( this.pulse( ) );
     this.items = new MiraItemHelper( this.pulse( ) );
-    this.strings = new MiraStringHelper( this.pulse( ) );
-    this.world = new MiraWorldHelper( this.pulse( ) );
+    this.world = new MiraWorldDataModel( this.pulse( ) );
     this.world.breathe( );
   }
   
   @NotNull
   public abstract
-  MiraPlayer<?> declares( @NotNull CraftPlayer target );
+  MiraPlayerModel<?> declares( @NotNull CraftPlayer target );
   
   /**
    * When called, this should clear a player's inventory
@@ -82,7 +79,7 @@ class MiraPluginMaster<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayer<
     players.remove( victim );
   }
   
-  @Nullable
+  @NotNull
   public
   Player player( @NotNull UUID target )
   {
@@ -105,20 +102,11 @@ class MiraPluginMaster<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayer<
   
   @NotNull
   public
-  MiraConfigurationModule<Pulse> config( )
+  MiraConfigurationModel<Pulse> config( )
   {
     assert this.core_config != null;
     
     return core_config;
-  }
-  
-  @NotNull
-  public
-  MiraFileHelper files( )
-  {
-    assert files != null;
-    
-    return files;
   }
   
   @NotNull
@@ -132,17 +120,10 @@ class MiraPluginMaster<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayer<
   
   @NotNull
   public
-  MiraStringHelper strings( )
+  MiraWorldDataModel world( )
   {
-    assert strings != null;
+    assert world != null;
     
-    return strings;
-  }
-  
-  @NotNull
-  public
-  MiraWorldHelper world( )
-  {
     return world;
   }
   
@@ -179,7 +160,9 @@ class MiraPluginMaster<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayer<
     
     while ( result.contains( "{%d}".formatted( placeholder_index ) ) )
     {
-      result = result.replace( "{%d}".formatted( placeholder_index ), replacements[ placeholder_index ] );
+      result = result.replace(
+        "{%d}".formatted( placeholder_index ),
+        replacements[ placeholder_index ] );
       
       placeholder_index++;
     }
