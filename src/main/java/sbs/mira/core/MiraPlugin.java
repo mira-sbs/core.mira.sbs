@@ -19,7 +19,6 @@ import java.util.logging.Logger;
 public abstract
 class MiraPlugin<Pulse extends MiraPulse<?, ?>>
   extends JavaPlugin
-  implements Breather<Pulse>
 {
   private final @NotNull Pulse pulse;
   
@@ -31,15 +30,12 @@ class MiraPlugin<Pulse extends MiraPulse<?, ?>>
     this.pulse = pulse;
   }
   
-  
-  @Override
   @NotNull
   public
   Pulse pulse( )
   throws MiraPulse.FlatlineException
   {
     return pulse;
-    
   }
   
   protected

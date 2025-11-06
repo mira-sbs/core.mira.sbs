@@ -1,4 +1,4 @@
-package sbs.mira.core.model;
+package sbs.mira.core.model.match;
 
 import org.bukkit.ChatColor;
 import org.bukkit.scoreboard.Scoreboard;
@@ -6,10 +6,9 @@ import org.bukkit.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
-import sbs.mira.pvp.MiraVersePlayer;
-import sbs.mira.pvp.MiraVersePulse;
-import sbs.mira.core.model.map.MiraMapModelConcrete;
-import sbs.mira.core.model.match.MiraMatchModel;
+import sbs.mira.core.MiraPulse;
+import sbs.mira.core.model.map.MiraMapModel;
+import sbs.mira.core.model.map.MiraMapOld_DELETEME;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,22 +29,22 @@ import java.util.stream.Stream;
  * @since 1.0.1
  */
 public
-class MiraLobbyModel
-  extends MiraModel<MiraVersePulse>
+class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
+  extends MiraModel<Pulse>
 {
-  private final @NotNull Scoreboard global_scoreboard;
-  private final @NotNull Team bukkit_team;
+  private final @NotNull Scoreboard scoreboard;
+  private final @NotNull Team team;
   
   private final List<String> map_rotation;
   private int map_rotation_index;
   
-  private @Nullable MiraMatchModel match;
-  private final @Nullable MiraMatchModel previous_match;
+  private @Nullable MiraMatchModel<Pulse> match;
+  private final @Nullable MiraMatchModel<Pulse> previous_match;
   
   private @Nullable String set_next_map_label;
   
   public
-  MiraLobbyModel( @NotNull MiraVersePulse pulse )
+  MiraLobbyModel( @NotNull Pulse pulse )
   {
     super( pulse );
     
@@ -56,13 +55,12 @@ class MiraLobbyModel
     this.map_rotation = new ArrayList<>( );
     this.map_rotation_index = 0;
     
-    this.global_scoreboard = Objects
-      .requireNonNull( this.server( ).getScoreboardManager( ) )
-      .getNewScoreboard( );
-    this.bukkit_team = this.global_scoreboard.registerNewTeam( "observing" );
-    this.bukkit_team.setCanSeeFriendlyInvisibles( true );
-    this.bukkit_team.setAllowFriendlyFire( false );
-    this.bukkit_team.setPrefix( String.valueOf( ChatColor.LIGHT_PURPLE ) );
+    this.scoreboard =
+      Objects.requireNonNull( this.server( ).getScoreboardManager( ) ).getNewScoreboard( );
+    this.team = this.scoreboard.registerNewTeam( "observing" );
+    this.team.setCanSeeFriendlyInvisibles( true );
+    this.team.setAllowFriendlyFire( false );
+    this.team.setPrefix( String.valueOf( ChatColor.LIGHT_PURPLE ) );
     
     try (
       Stream<String> stream = Files.lines( Paths.get( this.pulse( ).plugin( ).getDataFolder( ) +
@@ -115,23 +113,8 @@ class MiraLobbyModel
     return Collections.unmodifiableList( this.map_rotation );
   }
   
-  /**
-   * @return the global lobby scoreboard - used during pre-game and post-game.
-   */
   public @NotNull
-  Scoreboard global_scoreboard( )
-  {
-    return this.global_scoreboard;
-  }
-  
-  public @NotNull
-  Team bukkit_team( )
-  {
-    return this.bukkit_team;
-  }
-  
-  public @NotNull
-  MiraMatchModel match( )
+  MiraMatchModel<?> match( )
   {
     assert this.match != null;
     
@@ -148,16 +131,16 @@ class MiraLobbyModel
    * @param allow_admin_bypass true - if players with the `mira.administrator.bypass` permission can bypass this check always.
    * @return true - if the player is currently allowed to interact with the world.
    */
-  public
+  /*public
   boolean can_interact( @NotNull UUID entity_uuid, boolean allow_admin_bypass )
   {
     MiraVersePlayer player = this.pulse( ).model( ).player( entity_uuid );
     
     return player == null || (
-      player.has_team( ) || allow_admin_bypass && player.crafter( ).hasPermission(
-        "mira.administrator.bypass" )
+      player.has_team( ) ||
+      allow_admin_bypass && player.crafter( ).hasPermission( "mira.administrator.bypass" )
     );
-  }
+  }*/
   
   /*—[lobby lifecycle steps]——————————————————————————————————————————————————*/
   
@@ -192,15 +175,15 @@ class MiraLobbyModel
       this.set_next_map_label = null;
     }
     
-    MiraMapModelConcrete map = null; // todo: determine map?
+    MiraMapModel<Pulse> map = null; // todo: determine map?
     
-    this.match = new MiraMatchModel( this.pulse( ), map, was_manually_set, -1 );
+    this.match = new MiraMatchModel<>( this.pulse( ), map, was_manually_set, -1 );
     this.match.begin( );
   }
   
   public
   void conclude_match( )
   {
-    this.match.conclude( );
+    this.match().conclude( );
   }
 }

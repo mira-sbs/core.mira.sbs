@@ -1,15 +1,14 @@
 package sbs.mira.core.model.map.objective;
 
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import sbs.mira.core.model.map.Position;
+import sbs.mira.core.model.utility.Position;
 
 public
 class MiraFlagObjective
-  implements MiraCaptureObjective, MiraBlockObjective
+  implements MiraBlockObjective
 {
   private final @NotNull Material flag_material;
   private final @NotNull Position flag_position;
@@ -51,12 +50,5 @@ class MiraFlagObjective
   Position position( )
   {
     return this.flag_position;
-  }
-  
-  @Override
-  public
-  ChatColor colour( )
-  {
-    return null;
   }
 }

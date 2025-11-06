@@ -4,7 +4,9 @@ import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import sbs.mira.pvp.MiraVersePlayer;
+import sbs.mira.core.model.MiraPlayerModel;
+
+import java.util.Objects;
 
 /**
  * event that should fire when a player dies during an active match.
@@ -24,11 +26,13 @@ class MiraMatchPlayerDeathEvent
 {
   private static final HandlerList handlers = new HandlerList( );
   
-  private final @NotNull MiraVersePlayer killed;
-  private final @Nullable MiraVersePlayer killer;
+  private final @NotNull MiraPlayerModel<?> killed;
+  private final @Nullable MiraPlayerModel<?> killer;
   
   public
-  MiraMatchPlayerDeathEvent( @NotNull MiraVersePlayer killed, @Nullable MiraVersePlayer killer )
+  MiraMatchPlayerDeathEvent(
+    @NotNull MiraPlayerModel<?> killed,
+    @Nullable MiraPlayerModel<?> killer )
   {
     this.killed = killed;
     this.killer = killer;
@@ -38,18 +42,24 @@ class MiraMatchPlayerDeathEvent
    * @return the player who died.
    */
   public @NotNull
-  MiraVersePlayer killed( )
+  MiraPlayerModel<?> killed( )
   {
-    return killed;
+    return this.killed;
+  }
+  
+  public
+  boolean has_killer( )
+  {
+    return this.killer != null;
   }
   
   /**
    * @return the killing player (where applicable).
    */
-  public @Nullable
-  MiraVersePlayer killer( )
+  public @NotNull
+  MiraPlayerModel<?> killer( )
   {
-    return killer;
+    return Objects.requireNonNull( this.killer );
   }
   
   public static

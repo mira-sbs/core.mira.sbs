@@ -43,7 +43,7 @@ class MiraMatchPlayerRespawnEvent
   }
   
   @Override
-  public
+  public @NotNull
   HandlerList getHandlers( )
   {
     return handlers;

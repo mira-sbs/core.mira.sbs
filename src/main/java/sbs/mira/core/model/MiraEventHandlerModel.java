@@ -23,9 +23,11 @@ class MiraEventHandlerModel<Event extends org.bukkit.event.Event, Pulse extends 
    * @param pulse
    */
   protected
-  MiraEventHandlerModel( @NotNull Pulse pulse)
+  MiraEventHandlerModel( @NotNull Pulse pulse )
   {
-    super(pulse);
+    super( pulse );
+    
+    this.server( ).getPluginManager( ).registerEvents( this, this.pulse( ).plugin( ) );
   }
   
   /**
@@ -34,5 +36,5 @@ class MiraEventHandlerModel<Event extends org.bukkit.event.Event, Pulse extends 
    */
   @EventHandler
   public abstract
-  void occurs(Event event);
+  void handle_event( Event event );
 }

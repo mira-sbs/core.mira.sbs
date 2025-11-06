@@ -5,13 +5,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
-import sbs.mira.core.model.data.MiraItemHelper;
-import sbs.mira.core.model.data.MiraWorldDataModel;
 
-import java.util.Map;
-import java.util.Random;
-import java.util.TreeMap;
-import java.util.UUID;
+import java.io.File;
+import java.util.*;
 
 /**
  * represents the state of a bukkit server under the influence of mira.
@@ -23,7 +19,7 @@ import java.util.UUID;
  * @since 1.0.0
  */
 public abstract
-class MiraPluginModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayerModel<?>>
+class MiraPluginDataModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayerModel<?>>
   extends MiraModel<Pulse>
 {
   public final @NotNull Random rng;
@@ -31,21 +27,19 @@ class MiraPluginModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayerMo
   
   private @Nullable MiraConfigurationModel<Pulse> core_config;
   private @Nullable MiraConfigurationModel<Pulse> core_messages;
-  private @Nullable MiraItemHelper items;
-  private @Nullable MiraWorldDataModel world;
+  private @Nullable String maps_repository_path;
   
   public
-  MiraPluginModel( @NotNull Pulse pulse )
+  MiraPluginDataModel( @NotNull Pulse pulse )
   {
     super( pulse );
     
     this.rng = new Random( 0xfdffdeadL );
     this.players = new TreeMap<>( );
-    
   }
   
   public
-  void breathe( )
+  void initialise( )
   {
     this.pulse( ).plugin( ).saveDefaultConfig( );
     this.pulse( ).plugin( ).reloadConfig( );
@@ -55,9 +49,7 @@ class MiraPluginModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayerMo
       this.pulse( ).plugin( ).getConfig( ) );
     this.core_messages = new MiraConfigurationModel<>( this.pulse( ), "core_messages.yml" );
     
-    this.items = new MiraItemHelper( this.pulse( ) );
-    this.world = new MiraWorldDataModel( this.pulse( ) );
-    this.world.breathe( );
+    this.maps_repository_path = this.core_config.get( "mira.file_paths.maps_repository_path" );
   }
   
   @NotNull
@@ -95,9 +87,9 @@ class MiraPluginModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayerMo
   
   @NotNull
   public
-  Map<UUID, Player> players( )
+  List<Player> players( )
   {
-    return players;
+    return new ArrayList<>( players.values( ) );
   }
   
   @NotNull
@@ -107,24 +99,6 @@ class MiraPluginModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayerMo
     assert this.core_config != null;
     
     return core_config;
-  }
-  
-  @NotNull
-  public
-  MiraItemHelper items( )
-  {
-    assert items != null;
-    
-    return items;
-  }
-  
-  @NotNull
-  public
-  MiraWorldDataModel world( )
-  {
-    assert world != null;
-    
-    return world;
   }
   
   @NotNull
@@ -168,5 +142,13 @@ class MiraPluginModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayerMo
     }
     
     return result;
+  }
+  
+  public @NotNull
+  File maps_repository( )
+  {
+    assert this.maps_repository_path != null;
+    
+    return new File( this.maps_repository_path );
   }
 }

@@ -1,27 +1,27 @@
 package sbs.mira.core.model.match;
 
-import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Sound;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.scoreboard.Team;
+import org.bukkit.scoreboard.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
+import sbs.mira.core.event.match.MiraMatchPlayerDeathEvent;
+import sbs.mira.core.event.match.MiraMatchPlayerJoinTeamEvent;
+import sbs.mira.core.event.match.MiraMatchPlayerLeaveTeamEvent;
+import sbs.mira.core.event.match.MiraMatchPlayerRespawnEvent;
 import sbs.mira.core.model.MiraPlayerModel;
-import sbs.mira.core.model.map.MiraMapModel;
 import sbs.mira.core.model.map.MiraTeamModel;
-import sbs.mira.core.model.map.Position;
+import sbs.mira.core.model.utility.Position;
 import sbs.mira.core.utility.MiraStringUtility;
 
 import java.util.*;
@@ -36,8 +36,8 @@ import java.util.*;
  * @since 1.0.0
  */
 public abstract
-class MiraGameModeModel
-  extends MiraModel<MiraPulse<?, ?>>
+class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
+  extends MiraModel<Pulse>
   implements Listener
 {
   /*—[game mode attributes]———————————————————————————————————————————————————*/
@@ -53,40 +53,53 @@ class MiraGameModeModel
   
   /*—[match runtime attributes]———————————————————————————————————————————————*/
   
-  private @Nullable BukkitTask global_task;
+  protected final @NotNull MiraMatch match;
+  private @Nullable BukkitTask game_task_timer;
   private int seconds_elapsed;
   
   private final @NotNull List<String> event_log;
   
-  private final @NotNull Map<UUID, Integer> kills;
-  private final @NotNull Map<UUID, Integer> deaths;
-  private int environmental_deaths;
+  private final @NotNull Map<UUID, Integer> player_killstreaks;
+  private final @NotNull Map<UUID, Integer> player_kills;
+  private final @NotNull Map<UUID, Integer> player_deaths;
+  private final int environmental_deaths;
   
   private @Nullable Scoreboard scoreboard;
   private @Nullable Team team_spectators;
+  @Nullable
+  protected Objective objective;
   
   protected boolean active;
   protected boolean permanent_death;
   
   protected @Nullable String winner;
   
+  /*——————————————————————————————————————————————————————————————————————————*/
+  
   public
-  MiraGameModeModel( MiraPulse<?, ?> pulse )
+  MiraGameModeModel( @NotNull Pulse pulse, @NotNull MiraMatch match )
   {
     super( pulse );
     
     this.team_spawn_coordinates = new HashMap<>( );
-    this.kills = new HashMap<>( );
-    this.deaths = new HashMap<>( );
+    
+    this.match = match;
+    this.player_killstreaks = new HashMap<>( );
+    this.player_kills = new HashMap<>( );
+    this.player_deaths = new HashMap<>( );
     this.environmental_deaths = 0;
     this.event_log = new ArrayList<>( );
   }
   
-  public abstract
-  void activate( @NotNull List<MiraTeamModel> teams );
+  /*——————————————————————————————————————————————————————————————————————————*/
   
   public abstract
-  void refresh_scoreboard( );
+  void setup_scoreboard( );
+  
+  protected abstract
+  void determine_winner( );
+  
+  /*——————————————————————————————————————————————————————————————————————————*/
   
   protected
   void label( @NotNull String label )
@@ -94,11 +107,15 @@ class MiraGameModeModel
     this.label = label;
   }
   
+  /*——————————————————————————————————————————————————————————————————————————*/
+  
   protected @NotNull
   String label( )
   {
     return this.label;
   }
+  
+  /*——————————————————————————————————————————————————————————————————————————*/
   
   protected
   void display_name( @NotNull String display_name )
@@ -106,11 +123,15 @@ class MiraGameModeModel
     this.display_name = display_name;
   }
   
+  /*——————————————————————————————————————————————————————————————————————————*/
+  
   protected @NotNull
   String display_name( )
   {
     return this.display_name;
   }
+  
+  /*——————————————————————————————————————————————————————————————————————————*/
   
   /**
    * @return correct preceding grammar to verbally objectify the `label`, i.e. "a TDM" - "an FFA".
@@ -121,17 +142,56 @@ class MiraGameModeModel
     this.grammar = grammar;
   }
   
+  /*——————————————————————————————————————————————————————————————————————————*/
+  
   protected
   void description_offense( @NotNull String description_offense )
   {
     this.description_offense = description_offense;
   }
   
+  /*——————————————————————————————————————————————————————————————————————————*/
+  
   protected
   void description_defense( @NotNull String description_defense )
   {
     this.description_defense = description_defense;
   }
+  
+  /*——————————————————————————————————————————————————————————————————————————*/
+  
+  protected @NotNull
+  Scoreboard scoreboard( )
+  {
+    return this.scoreboard;
+  }
+  
+  /*——————————————————————————————————————————————————————————————————————————*/
+  
+  /**
+   * @return the amount of seconds elapsed since the game mode started.
+   */
+  public
+  int seconds_elapsed( )
+  {
+    return seconds_elapsed;
+  }
+  
+  /*——————————————————————————————————————————————————————————————————————————*/
+  
+  /**
+   * permanent death refers to the inability to respawn once a player has died.
+   * players cannot join or rejoin teams after the match starts.
+   *
+   * @return true - if players are subject to permanent death.
+   */
+  public
+  boolean permanent_death( )
+  {
+    return permanent_death;
+  }
+  
+  /*—[log]————————————————————————————————————————————————————————————————————————————————————————*/
   
   /**
    * Logs an event. This can be anything.
@@ -151,439 +211,150 @@ class MiraGameModeModel
                    content );
   }
   
-  /*—[kill/death handlers]————————————————————————————————————————————————————*/
+  /*—[stats]——————————————————————————————————————————————————————————————————————————————————————*/
+  
+  public
+  int player_killstreak( @NotNull UUID uuid )
+  {
+    return this.player_killstreaks.get( uuid );
+  }
+  
+  public
+  int player_kills( @NotNull UUID uuid )
+  {
+    return this.player_kills.get( uuid );
+  }
+  
+  public
+  int player_deaths( @NotNull UUID uuid )
+  {
+    return this.player_deaths.get( uuid );
+  }
+  
+  /*—[event handlers]—————————————————————————————————————————————————————————————————————————————*/
+  
+  @EventHandler (priority = EventPriority.LOWEST)
+  public
+  void handle_player_death( MiraMatchPlayerDeathEvent event )
+  {
+    MiraPlayerModel<?> mira_killed = event.killed( );
+    MiraPlayerModel<?> mira_killer = event.killed( );
+    
+    this.player_deaths.put(
+      mira_killed.uuid( ),
+      this.player_deaths.get( mira_killed.uuid( ) ) + 1 );
+    this.player_killstreaks.put( mira_killed.uuid( ), 0 );
+    
+    if ( event.has_killer( ) )
+    {
+      this.player_kills.put(
+        mira_killer.uuid( ),
+        this.player_kills.get( mira_killer.uuid( ) ) + 1 );
+      
+      int player_killer_killstreak = this.player_deaths.get( mira_killer.uuid( ) );
+      
+      this.player_killstreaks.put( mira_killer.uuid( ), player_killer_killstreak + 1 );
+      
+      this.match.world( ).playSound(
+        mira_killed.location( ),
+        Sound.ENTITY_BLAZE_DEATH,
+        1L,
+        player_killer_killstreak );
+    }
+  }
+  
+  /*——————————————————————————————————————————————————————————————————————————*/
   
   @EventHandler
   public
-  void playerDeathHandle( PlayerDeathEvent event )
+  void handle_player_respawn( PlayerRespawnEvent event )
   {
-    Player bukkit_killed = event.getEntity( );
-    @Nullable Player bukkit_killer = bukkit_killed.getKiller( );
-    
-    @NotNull MiraPlayerModel mira_killed =
-      Objects.requireNonNull( this.pulse( ).model( ).player( bukkit_killed.getUniqueId( ) ) );
-    @Nullable MiraPlayerModel mira_killer =
-      bukkit_killer == null ? null : this.pulse( ).model( ).player( bukkit_killer.getUniqueId( ) );
-    
-    @Nullable String death_message = event.getDeathMessage( );
-    
-    if ( mira_killed.equals( mira_killer ) )
-    {
-      mira_killer = null;
-    }
-    
-    if ( mira_killer == null )
-    {
-      if ( death_message == null )
-      {
-        death_message = "%s died".formatted( mira_killed.name( ) );
-      }
-      
-      event.setDeathMessage( death_message.replaceAll(
-        mira_killed.name( ),
-        mira_killed.display_name( ) ) );
-      
-      this.log( death_message );
-      this.environmental_deaths++;
-      
-      this.pulse( ).plugin( ).getServer( ).getPluginManager( ).callEvent( new MiraMatchPlayerDeathEvent( mira_killed,
-        null ) );
-      this.on_death( mira_killed );
-      
-      return;
-    }
-    
-    mira_killer.team( ).increment_kills( );
-    bukkit_killed.getWorld( ).playSound(
-      bukkit_killed.getLocation( ),
-      Sound.ENTITY_BLAZE_DEATH,
-      1L,
-      1L );
-    
-    if ( death_message == null )
-    {
-      death_message =
-        "%s died to the cruelty of %s".formatted( mira_killed.name( ), mira_killer.name( ) );
-    }
-    
-    event.setDeathMessage( death_message.replaceAll(
-      mira_killed.name( ),
-      mira_killed.display_name( ) ).replaceAll(
-      mira_killer.name( ),
-      mira_killer.display_name( ) ) );
-    
-    this.log( death_message );
-    
-    this.pulse( ).plugin( ).getServer( ).getPluginManager( ).callEvent( new MiraMatchPlayerDeathEvent( mira_killed,
-      mira_killer ) );
-    this.on_kill( mira_killed, mira_killer );
-  }
-  
-  /**
-   * event handler.
-   * fires when a player kills another player in the active match (running this game mode).
-   * implicitly fires the `on_death` event for the `killed` player.
-   *
-   * @param killed the subject player who died.
-   * @param killer the player who killed the dead player.
-   */
-  public
-  void on_kill( @NotNull MiraPlayerModel<?> killed, @NotNull MiraPlayerModel<?> killer )
-  {
-    this.kills.put( killer.uuid( ), this.kills.get( killer.uuid( ) ) + 1 );
-    
-    this.on_death( killed );
-  }
-  
-  /*—[respawn handlers]———————————————————————————————————————————————————————*/
-  
-  @EventHandler
-  public
-  void onRespawn( PlayerRespawnEvent event )
-  {
-    // clears bed respawn location (ideally not even allowed).
-    event.getPlayer( ).setRespawnLocation( null );
-    
-    MiraVersePlayer mira_player =
+    MiraPlayerModel<?> mira_player =
       this.pulse( ).model( ).player( event.getPlayer( ).getUniqueId( ) );
     
-    // fixme: get respawn locations!
-    /*
-    event.setRespawnLocation(
-      randomSpawnFrom(
-        main.cache( ).getCurrentMap( ).getTeamSpawns( mira_player.getCurrentTeam( ).getTeamName( )
-      )
-    ).toLocation(main.match( ).getCurrentWorld( ), true ) );
-    */
+    event.setRespawnLocation( this.match.map( ).random_team_spawn_location( mira_player.team( ) ) );
     
-    this.map( ).apply_inventory( mira_player );
-    // fixme: mira_player.game_mode(...)!
-    event.getPlayer( ).setGameMode( GameMode.SURVIVAL );
+    this.match.map( ).apply_inventory( mira_player );
+    mira_player.bukkit( ).setGameMode( GameMode.SURVIVAL );
   }
   
   @EventHandler
   public
-  void onRespawn( MiraMatchPlayerRespawnEvent event )
+  void handle_match_player_respawn( MiraMatchPlayerRespawnEvent event )
   {
-    MiraVersePlayer mira_player = event.player( );
+    MiraPlayerModel<?> mira_player = event.player( );
     
-    // during certain gamemodes - players will respawn onto the spectators team.
     if ( !mira_player.has_team( ) )
     {
       return;
     }
     
-    // fixme: get respawn locations!
-    /*
-    event.setRespawnLocation(
-      randomSpawnFrom(
-        main.cache( ).getCurrentMap( ).getTeamSpawns( mira_player.getCurrentTeam( ).getTeamName( )
-      )
-    ).toLocation(main.match( ).getCurrentWorld( ), true ) );
-    */
-    
-    this.map( ).apply_inventory( mira_player );
-    // fixme: mira_player.game_mode(...)!
-    event.getPlayer( ).setGameMode( GameMode.SURVIVAL );
+    this.match.map( ).apply_inventory( mira_player );
+    mira_player.bukkit( ).setGameMode( GameMode.SURVIVAL );
   }
   
   /*—[team assignment handlers]———————————————————————————————————————————————*/
   
-  /**
-   * event handler.
-   * fires when a player leaves their team and therefore the match (running this gamemode).
-   * certain compensation may need to occur - this is game mode specific.
-   *
-   * @param player the subject player who just left their team.
-   * @param team   the associated team.
-   */
+  @EventHandler
   public
-  void on_leave_team( @NotNull MiraVersePlayer player, @NotNull MiraTeamModel team )
+  void handle_join_team( MiraMatchPlayerJoinTeamEvent event )
   {
-    this.log( player.name( ) + " leaves " + team.coloured_label( ) );
+    if ( event.isCancelled( ) )
+    {
+      return;
+    }
     
-    this.kills.remove( player.uuid( ) );
-    this.deaths.remove( player.uuid( ) );
+    MiraPlayerModel<?> mira_player = event.player( );
+    
+    this.player_killstreaks.put( mira_player.uuid( ), 0 );
+    this.player_kills.putIfAbsent( mira_player.uuid( ), 0 );
+    this.player_deaths.putIfAbsent( mira_player.uuid( ), 0 );
+    
+    this.team_spectators.removeEntry( mira_player.name( ) );
   }
   
-  /**
-   * event handler.
-   * fires when a player joins a team during the match running this game mode.
-   *
-   * @param mira_player the subject player who just joined their team.
-   */
+  @EventHandler (priority = EventPriority.HIGHEST)
   public
-  void on_join_team( MiraVersePlayer mira_player )
+  void handle_leave_team( MiraMatchPlayerLeaveTeamEvent event )
   {
-    this.log( mira_player.name( ) + " joins " + mira_player.team( ).coloured_label( ) );
-    
-    this.kills.put( mira_player.uuid( ), 0 );
-    this.deaths.put( mira_player.uuid( ), 0 );
-    
-    // fixme: serialized locations w/o world.
-    /*bukkit_player.teleport(
-      randomSpawnFrom( this.team_spawn_coordinates.get( mira_team.label( ) ) ).toLocation(
-        main.match( ).getCurrentWorld( ),
-        true ) );*/
-    
-    this.map( ).apply_inventory( mira_player );
-    
-    Player bukkit_player = mira_player.crafter( );
-    bukkit_player.setGameMode( GameMode.SURVIVAL );
-    bukkit_player.setFallDistance( 0F );
-    
-    this.team_spectators.removeEntry( bukkit_player.getName( ) );
-    
-    MiraTeamModel mira_team = mira_player.team( );
-    mira_team.bukkit_team( ).addEntry( mira_player.name( ) );
-    
-    bukkit_player.sendMessage( "you have joined the %s".formatted( mira_team.display_name( ) ) );
-  }
-  
-  /**
-   * called at the start of a match to automatically distribute all players onto a team.
-   * this is only done for players who have pre-joined the match in the pre-game lobby.
-   */
-  private
-  void assign_teams( )
-  {
-    // randomly pick players out of a hat for team assignment until everyone has been evaluated.
-    List<MiraVersePlayer> players = new ArrayList<>( this.pulse( ).model( ).players( ).values( ) );
-    
-    while ( !players.isEmpty( ) )
-    {
-      MiraVersePlayer player = players.get( this.pulse( ).model( ).rng.nextInt( players.size( ) ) );
-      
-      if ( player.joined( ) )
-      {
-        if ( this.try_join_team( player, null ) )
-        {
-          return;
-        }
-      }
-      
-      // the player did not join before the match started - or they failed to join a team.
-      player.crafter( ).setGameMode( GameMode.CREATIVE );
-      // fixme: this.pulse( ).master( ).giveSpectatorKit( player );
-      
-      players.remove( player );
-    }
-  }
-  
-  private
-  void try_join_team( @NotNull MiraVersePlayer player, @Nullable MiraTeamModel preferred_team )
-  {
-    if ( !this.active )
-    {
-      throw new IllegalStateException( "player joins team during inactive game mode?" );
-    }
-    
-    if ( !player.joined( ) )
-    {
-      throw new IllegalStateException( "player joins team without being marked as joined?" );
-    }
-    
-    if ( this.permanent_death )
-    {
-      player.messages( "permanent death is enabled - you can no longer join!" );
-      player.joined( false );
-      
-      return;
-    }
-    
-    @NotNull MiraTeamModel given_team =
-      Objects.requireNonNullElseGet( preferred_team, this::smallest_team );
-    
-    if ( given_team.full( ) )
-    {
-      if ( preferred_team == null )
-      {
-        player.messages( "all teams are full, please try joining later." );
-      }
-      else
-      {
-        player.messages( "your preferred team is full, please try joining later." );
-      }
-      
-      player.joined( false );
-      
-      return;
-    }
-    
-    MiraMatchPlayerJoinTeamEvent join_team_event =
-      new MiraMatchPlayerJoinTeamEvent( player, given_team );
-    
-    this.call_event( join_team_event );
-    
-    if ( join_team_event.isCancelled( ) )
-    {
-      return;
-    }
-    
-    player.joins( given_team );
-    
-    this.on_join_team( player );
-  }
-  
-  private
-  void try_leave_team( @NotNull MiraVersePlayer mira_player )
-  {
-    if ( !this.active )
-    {
-      throw new IllegalStateException( "player leaves team during inactive game mode?" );
-    }
-    
-    if ( !mira_player.joined( ) )
-    {
-      throw new IllegalStateException( "player leaves team without being marked as joined?" );
-    }
-    
-    if ( !this.permanent_death )
-    {
-      mira_player.messages( "you have left the match!" );
-    }
-    
-    MiraTeamModel mira_team = mira_player.team( );
-    
-    this.pulse( ).plugin( ).getServer( ).getPluginManager( ).callEvent( new MiraMatchPlayerLeaveTeamEvent( mira_player,
-      mira_team ) );
-    
-    mira_player.joins( null );
-    
-    Player bukkit_player = mira_player.crafter( );
-    
-    bukkit_player.teleport( map( ).spectator_spawn_position( ) );
-    bukkit_player.setGameMode( GameMode.CREATIVE );
-    
-    mira_team.bukkit_team( ).removeEntry( mira_player.name( ) );
-    this.team_spectators.addEntry( mira_player.name( ) );
-    
-    this.pulse( ).model( ).items( ).clear( mira_player );
-    //this.pulse().master().giveSpectatorKit( mira_player );
-    
-    this.on_leave_team( mira_player, mira_team );
+    this.player_killstreaks.put( event.player( ).uuid( ), 0 );
   }
   
   /*—[match lifecycle handlers]———————————————————————————————————————————————*/
   
   /**
-   * event handler.
-   * fires when the match running this game mode should now be ended.
-   * this can be due to the objective being fulfilled - or a manually induced ending.
+   * starts the game mode. occurs after the pre-game completes.
    */
   public
-  void on_game_mode_end( )
-  {
-    if ( this.global_task != null )
-    {
-      this.global_task.cancel( );
-      this.determine_winner( );
-    }
-    
-    this.on_complete( );
-  }
-  
-  protected abstract
-  void determine_winner( );
-  
-  /**
-   * Broadcasts a winner after calculation.
-   *
-   * @param winners   The list of winners.
-   * @param objective The objective. i.e. CTF = "captures"
-   * @param highest   Used if there is a single winner.
-   */
-  protected
-  void broadcast_winner( List<MiraTeamModel> winners, String objective, int highest )
-  {
-    // Is there more than one winner?
-    if ( winners.size( ) > 1 )
-    {
-      TextComponent comp = new TextComponent( "It's a " + winners.size( ) + "-way tie! " );
-      comp.addExtra( main.strings( ).winnerFormat( winners ) );
-      comp.addExtra( " tied!" );
-      main.broadcastSpigotMessage( comp );
-      
-      tempWinner = main.strings( ).sentenceFormat( winners );
-    }
-    else if ( winners.size( ) == 1 )
-    {
-      WarTeam winner = winners.get( 0 ); // Get the singleton winner!
-      // ChatColor.stripColor() is used to remove the team's color from the String so it can be queried to get their points.
-      TextComponent comp = winner.getHoverInformation( );
-      // WHY SO GRAMMAR?
-      comp.addExtra( (
-                       winner.getTeamName( ).charAt( winner.getTeamName( ).length( ) - 1 ) == 's' ?
-                       " are the winners" :
-                       " is the winner"
-                     ) + " with " + highest + " " + objective + "!" );
-      main.broadcastSpigotMessage( comp );
-      tempWinner = main.strings( ).sentenceFormat( winners );
-    }
-  }
-  
-  /**
-   * @return the amount of seconds elapsed since the match & game mode started.
-   */
-  public
-  int seconds_elapsed( )
-  {
-    return seconds_elapsed;
-  }
-  
-  /**
-   * permanent death refers to the inability to respawn once a player has died.
-   * players cannot join or rejoin teams after the match starts.
-   *
-   * @return true - if players are subject to permanent death.
-   */
-  public
-  boolean permanent_death( )
-  {
-    return permanent_death;
-  }
-  
-  /**
-   * @return the map currently being played in tandem with this game mode.
-   */
-  protected @NotNull
-  MiraMapModel map( )
-  {
-    if ( this.map == null )
-    {
-      throw new NullPointerException( "please set the map for the running gamemode!" );
-    }
-    return map;
-  }
-  
-  /**
-   * starts the game mode. done in tandem with starting the match.
-   */
-  public
-  void begin( @NotNull MiraMapModel map )
+  void activate( )
   {
     if ( this.active )
     {
       throw new IllegalStateException( "game mode is already active!" );
     }
     
-    this.map = map;
-    
-    this.pulse( ).plugin( ).getServer( ).getPluginManager( ).registerEvents(
-      this,
-      this.pulse( ).plugin( ) );
-    
-    /*this.team_spawn_coordinates =
-      ( HashMap<String, ArrayList<SerializedLocation>> ) map( ).teamSpawns.clone( );*/
-    
     this.active = true;
-    this.scoreboard =
-      Objects.requireNonNull( this.pulse( ).plugin( ).getServer( ).getScoreboardManager( ) ).getNewScoreboard( );
+    this.scoreboard = this.server( ).getScoreboardManager( ).getNewScoreboard( );
     
-    for ( MiraTeamModel mira_team : this.map( ).teams( ) )
+    String scoreboard_title =
+      String.format( "%s (%s)", this.match.map( ).label( ), this.display_name( ) );
+    
+    if ( scoreboard_title.length( ) > 32 )
+    {
+      scoreboard_title = scoreboard_title.substring( 0, 32 );
+    }
+    
+    this.objective = this.scoreboard( ).registerNewObjective(
+      this.label( ),
+      Criteria.DUMMY,
+      this.display_name( ) );
+    this.objective.setDisplaySlot( DisplaySlot.SIDEBAR );
+    this.objective.setDisplayName( scoreboard_title );
+    
+    for ( MiraTeamModel mira_team : this.match.map( ).teams( ) )
     {
       Team bukkit_team = scoreboard.registerNewTeam( mira_team.label( ) );
-      mira_team.bukkit_team( bukkit_team );
+      mira_team.bukkit( bukkit_team );
       bukkit_team.setCanSeeFriendlyInvisibles( true );
       // todo: allow friendly fire lmfao? like hit each other for no damage maybe?
       bukkit_team.setAllowFriendlyFire( false );
@@ -595,26 +366,20 @@ class MiraGameModeModel
     this.team_spectators.setAllowFriendlyFire( false );
     this.team_spectators.setPrefix( String.valueOf( ChatColor.LIGHT_PURPLE ) );
     
-    for ( MiraVersePlayer player : this.pulse( ).model( ).players( ).values( ) )
+    for ( MiraPlayerModel<?> player : this.pulse( ).model( ).players( ) )
     {
       this.team_spectators.addEntry( player.name( ) );
     }
     
-    this.global_task = Bukkit.getScheduler( ).runTaskTimer(
+    this.game_task_timer = Bukkit.getScheduler( ).runTaskTimer(
       this.pulse( ).plugin( ), ( )->
       {
-        assert this.global_task != null;
+        assert this.game_task_timer != null;
+        assert this.match.state( ) == MiraMatchState.GAME;
         
-        if ( this.pulse( ).model( ).match( ).getState( ) != MiraMatchModel.State.PLAYING )
-        {
-          this.global_task.cancel( );
-          
-          return;
-        }
+        this.seconds_elapsed++;
         
-        on_timer_second_elapsed( );
-        
-        long seconds_remaining = this.match_duration( ) - this.seconds_elapsed;
+        long seconds_remaining = this.match.map( ).match_duration( ) - this.seconds_elapsed;
         
         if ( seconds_remaining % 60 == 0 && seconds_remaining != 0 )
         {
@@ -630,23 +395,13 @@ class MiraGameModeModel
           Bukkit.broadcastMessage( "there is %d second(s) remaining!".formatted( seconds_remaining ) );
         }
         
-        if ( seconds_elapsed( ) >= match_duration( ) )
+        if ( seconds_elapsed( ) >= this.match.map( ).match_duration( ) )
         {
-          on_game_mode_end( ); // the match *always* ends once the match duration has been reached.
+          deactivate( ); // the match *always* ends once the match duration has been reached.
         }
         // have a 0 `tick` delay before starting the task, and repeat every 20 ticks.
         // a `tick` is a 20th of a second. minecraft servers run at 20 ticks per second (tps).
-      }, 0L, 20L );
-  }
-  
-  /**
-   * event handler.
-   * fires every 20 ticks (*usually* 1 second) in tandem with the global task timer.
-   */
-  public
-  void on_timer_second_elapsed( )
-  {
-    seconds_elapsed++;
+      }, 20L, 20L );
   }
   
   /**
@@ -655,59 +410,56 @@ class MiraGameModeModel
   public
   void deactivate( )
   {
-    if ( this.global_task != null )
+    if ( this.game_task_timer == null )
     {
-      this.global_task.cancel( );
+      throw new IllegalStateException( "game task timer does not exist - cannot deactivate!" );
     }
     
-    this.global_task = null;
-    this.map = null; // Frees up the currently playing map's assignment in memory.
+    this.game_task_timer.cancel( );
+    this.game_task_timer = null;
     
     HandlerList.unregisterAll( this );
     
     //publishes_statistics( );
   }
   
-  public @NotNull
-  Scoreboard scoreboard( )
-  {
-    return this.scoreboard;
-  }
-  
   /**
-   * Searches through all current teams in the match for
-   * the team with the least amount of members.
+   * Broadcasts a winner after calculation.
    *
-   * @return The team with the least members.
+   * @param winners              The list of winners.
+   * @param objective_quantifier The objective. i.e. CTF = "captures"
+   * @param winning_score        Used if there is a single winner.
    */
-  private @Nullable
-  MiraTeamModel smallest_team( )
+  public
+  void broadcast_winner(
+    @NotNull List<MiraTeamModel> winners,
+    @NotNull String objective_quantifier,
+    int winning_score )
   {
-    @Nullable Integer minimum_team_size = null;
-    @Nullable MiraTeamModel result = null;
+    String winner_message;
     
-    boolean all_teams_full = true;
-    
-    for ( MiraTeamModel team : this.map( ).teams( ) )
+    if ( winners.size( ) > 1 )
     {
-      if ( !team.full( ) )
-      {
-        all_teams_full = false;
-        if ( minimum_team_size == null ||
-             team.bukkit_team( ).getEntries( ).size( ) < minimum_team_size )
-        {
-          result = team;
-          minimum_team_size = team.bukkit_team( ).getEntries( ).size( );
-        }
-      }
+      String multi_winner_message_format = "it's a %d-way tie!\n%s tied with %s %s!";
+      
+      winner_message = multi_winner_message_format.formatted(
+        winners.size( ),
+        MiraStringUtility.verbal_list( winners ),
+        winning_score,
+        objective_quantifier );
+    }
+    else if ( winners.size( ) == 1 )
+    {
+      MiraTeamModel team_winner = winners.get( 0 );
+      String single_winner_message_format = "%s %s with %s %s!";
+      
+      winner_message = single_winner_message_format.formatted(
+        team_winner.coloured_display_name( ),
+        team_winner.label( ).endsWith( "s" ) ? " are the winners" : " is the winner",
+        winning_score,
+        objective_quantifier );
     }
     
-    return result;
-  }
-  
-  private
-  long match_duration( )
-  {
-    return ( long ) map( ).attr( ).get( "matchDuration" );
+    this.server( ).broadcastMessage( winner );
   }
 }

@@ -1,4 +1,4 @@
-package sbs.mira.core.model.map;
+package sbs.mira.core.model.utility;
 
 import org.bukkit.Location;
 import org.bukkit.World;

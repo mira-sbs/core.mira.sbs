@@ -70,8 +70,8 @@ class MiraConfigurationModel<Pulse extends MiraPulse<?, ?>>
     ) );
     
     this.pulse( )
-        .plugin( )
-        .log( "(^-^) successfully loaded file configuration '%s'".formatted( config_resource_name ) );
+      .plugin( )
+      .log( "(^-^) successfully loaded file configuration '%s'".formatted( config_resource_name ) );
   }
   
   /**
@@ -83,6 +83,7 @@ class MiraConfigurationModel<Pulse extends MiraPulse<?, ?>>
    */
   public @Nullable
   String get( @NotNull String key )
+  throws NullPointerException
   {
     if ( !mapping.containsKey( key ) )
     {

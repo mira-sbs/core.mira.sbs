@@ -1,7 +1,6 @@
 package sbs.mira.core.utility;
 
 import org.bukkit.ChatColor;
-import org.bukkit.Color;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -66,8 +65,8 @@ class MiraStringUtility
    * @param array An array of words.
    * @return A sentence.
    */
-  public
-  String sentenceFormat( List<?> array )
+  public static
+  String verbal_list( List<?> array )
   {
     if ( array.isEmpty( ) )
     {
@@ -101,42 +100,42 @@ class MiraStringUtility
   /**
    * Performs the same as above but outputs a TextComponent result.
    *
-   * @param array Array of TextComponent.
    * @return The winner format.
-   *
-  public
-  TextComponent winnerFormat(List<WarTeam> array)
-  {
-  if (array.size() == 0)
-  {
-  return new TextComponent("No One");
-  }
-  TextComponent result = new TextComponent();
-  if (array.size() == 1)
-  {
-  return array.get(0).getHoverInformation();
-  }
-  int i = 1;
-  while (i <= array.size())
-  {
-  if (i == array.size())
-  {
-  result.addExtra(ChatColor.WHITE + " and ");
-  result.addExtra(array.get(i - 1).getHoverInformation());
-  }
-  else if (i == 1)
-  {
-  result = new TextComponent(array.get(0).getHoverInformation());
-  }
-  else
-  {
-  result.addExtra(ChatColor.WHITE + ", ");
-  result.addExtra(array.get(i - 1).getHoverInformation());
-  }
-  i++;
-  }
-  return result;
-  }*/
+   * <p>
+   * public
+   * TextComponent winnerFormat(List<WarTeam> array)
+   * {
+   * if (array.size() == 0)
+   * {
+   * return new TextComponent("No One");
+   * }
+   * TextComponent result = new TextComponent();
+   * if (array.size() == 1)
+   * {
+   * return array.get(0).getHoverInformation();
+   * }
+   * int i = 1;
+   * while (i <= array.size())
+   * {
+   * if (i == array.size())
+   * {
+   * result.addExtra(ChatColor.WHITE + " and ");
+   * result.addExtra(array.get(i - 1).getHoverInformation());
+   * }
+   * else if (i == 1)
+   * {
+   * result = new TextComponent(array.get(0).getHoverInformation());
+   * }
+   * else
+   * {
+   * result.addExtra(ChatColor.WHITE + ", ");
+   * result.addExtra(array.get(i - 1).getHoverInformation());
+   * }
+   * i++;
+   * }
+   * return result;
+   * }
+   */
   
   public static
   long generate_random_world_id( long previous_world_id )
@@ -190,99 +189,30 @@ class MiraStringUtility
     return amount == 1 ? " " : "s ";
   }
   
-  /**
-   * Turns ChatColor into dye Color.
-   * This may not be 100% accurate but it was as close as I could get.
-   *
-   * @param color The ChatColor to convert.
-   * @return The matching Color.
-   */
-  public
-  Color convertChatToDye( ChatColor color )
+  public static
+  String pretty_potion_effect( PotionEffect effect )
   {
-    switch ( color )
-    {
-      case AQUA:
-        return Color.AQUA;
-      case BLACK:
-        return Color.BLACK;
-      case BLUE:
-        return Color.BLUE;
-      case DARK_AQUA:
-        return Color.TEAL;
-      case DARK_BLUE:
-        return Color.NAVY;
-      case DARK_GRAY:
-        return Color.GRAY;
-      case DARK_GREEN:
-        return Color.GREEN;
-      case DARK_PURPLE:
-        return Color.PURPLE;
-      case DARK_RED:
-        return Color.MAROON;
-      case GOLD:
-        return Color.ORANGE;
-      case GRAY:
-        return Color.GRAY;
-      case GREEN:
-        return Color.LIME;
-      case LIGHT_PURPLE:
-        return Color.FUCHSIA;
-      case RED:
-        return Color.RED;
-      case YELLOW:
-        return Color.YELLOW;
-      case WHITE:
-        return Color.WHITE;
-      default:
-        return Color.WHITE;
-    }
+    return effects.get( effect.getType( ) ) +
+           " " +
+           int_to_roman_numeral( effect.getAmplifier( ) + 1 );
   }
   
-  /**
-   * Formats a potion effect into what it would normally be.
-   *
-   * @param effect Effect to pretty.
-   * @return Normal-looking potion effect name.
-   */
-  String potionEffect( PotionEffect effect )
+  private static
+  String int_to_roman_numeral( int number )
   {
-    return effects.get( effect.getType( ) ) + " " + quickNumerals( effect.getAmplifier( ) + 1 );
-  }
-  
-  /**
-   * Returns the numerals of 1 to 10 quickly.
-   *
-   * @param number The number to convert.
-   * @return The conversion.
-   */
-  private
-  String quickNumerals( int number )
-  {
-    switch ( number )
+    return switch ( number )
     {
-      case 10:
-        return "X";
-      case 9:
-        return "IX";
-      case 8:
-        return "VIII";
-      case 7:
-        return "VII";
-      case 6:
-        return "VI";
-      case 5:
-        return "V";
-      case 4:
-        return "IV";
-      case 3:
-        return "III";
-      case 2:
-        return "II";
-      case 1:
-        return "II";
-      default:
-        return "X+";
-    }
+      case 10 -> "X";
+      case 9 -> "IX";
+      case 8 -> "VIII";
+      case 7 -> "VII";
+      case 6 -> "VI";
+      case 5 -> "V";
+      case 4 -> "IV";
+      case 3 -> "III";
+      case 2 -> "II";
+      case 1 -> "I";
+      default -> "X+";
+    };
   }
 }

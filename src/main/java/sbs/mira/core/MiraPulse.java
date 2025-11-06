@@ -2,7 +2,7 @@ package sbs.mira.core;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import sbs.mira.core.model.MiraPluginModel;
+import sbs.mira.core.model.MiraPluginDataModel;
 
 /**
  * [recursive wit.]
@@ -15,7 +15,7 @@ import sbs.mira.core.model.MiraPluginModel;
  * @since 1.0.0
  */
 public
-class MiraPulse<Plugin extends MiraPlugin<?>, Model extends MiraPluginModel<?, ?>>
+class MiraPulse<Plugin extends MiraPlugin<?>, Model extends MiraPluginDataModel<?, ?>>
 {
   @Nullable
   protected Plugin plugin;
@@ -40,7 +40,7 @@ class MiraPulse<Plugin extends MiraPlugin<?>, Model extends MiraPluginModel<?, ?
   {
     this.plugin = plugin;
     this.model = model;
-    this.model.breathe( );
+    this.model.initialise( );
   }
   
   @NotNull

@@ -1,15 +1,14 @@
-package sbs.mira.core.model.data;
+package sbs.mira.core.utility;
 
 
+import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.craftbukkit.v1_21_R6.CraftServer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
-import sbs.mira.core.MiraModel;
-import sbs.mira.core.MiraPulse;
+import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.model.data.world.EmptyChunkGenerator;
-import sbs.mira.core.utility.MiraFileUtility;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,7 +18,6 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * this class means the world to us.
@@ -32,37 +30,11 @@ import java.util.Objects;
  * @since 1.0.0
  */
 public final
-class MiraWorldDataModel
-  extends MiraModel<MiraPulse<?, ?>>
+class MiraWorldUtility
 {
   private final static String WORLD_REGION_DIRECTORY_NAME = "region";
   private final static String WORLD_REGION_FILE_EXTENSION = ".mca";
   private final static String[] WORLD_LEVEL_FILE_NAMES = { "level.dat", "uid.dat" };
-  
-  // TODO: make builder classes so we don't have to make 4 function calls to access file helper lol.
-  private final MiraFileUtility files;
-  private final CraftServer server;
-  
-  private final String repo_path;
-  
-  /**
-   *
-   * @param pulse
-   */
-  public
-  MiraWorldDataModel( MiraPulse<?, ?> pulse )
-  {
-    super( pulse );
-    
-    this.files = pulse( ).model( ).files( );
-    this.server = ( CraftServer ) pulse( ).plugin( ).getServer( );
-    this.repo_path = pulse( ).model( ).config( ).get( "mira.file_paths.world_repository" );
-  }
-  
-  public
-  void breathe( )
-  {
-  }
   
   /**
    * valid world data includes `.mca` and `.dat` files.
@@ -71,7 +43,7 @@ class MiraWorldDataModel
    *
    * @return true - if this is a valid minecraft world file.
    */
-  public
+  public static
   boolean is_world_directory( File world_directory )
   {
     String world_directory_path = world_directory.getAbsolutePath( );
@@ -133,43 +105,35 @@ class MiraWorldDataModel
   public static
   boolean is_world_file( File file )
   {
-    return Arrays.stream( WORLD_LEVEL_FILE_NAMES )
-                 .anyMatch( level_file_name->file.getName( ).equals( level_file_name ) );
-  }
-  
-  public @NotNull
-  File repo( )
-  {
-    return new File( repo_path );
+    return Arrays.stream( WORLD_LEVEL_FILE_NAMES ).anyMatch( level_file_name->file.getName( ).equals(
+      level_file_name ) );
   }
   
   /**
    *
-   * @param world_label    world "names" are so vibe coder coded.
-   * @param hyper_breather bro stop or ur gonna fill the world with all ur hot air.
-   * @param seed           IM INTERESTED??
+   * @param world_label world "names" are so vibe coder coded.
+   * @param empty       bro stop or ur gonna fill the world with all ur hot air.
+   * @param seed        IM INTERESTED??
    * @return
    * @see EmptyChunkGenerator
    */
-  public
-  World loads( String world_label, boolean hyper_breather, long seed )
+  public static
+  World loads( String world_label, boolean empty, long seed )
   {
-    pulse( ).plugin( ).log( "[worlds] loads '%s'...".formatted( world_label ) );
-    
     WorldCreator creator = new WorldCreator( world_label ).seed( seed );
     
-    if ( hyper_breather )
+    if ( empty )
     {
       creator.generator( new EmptyChunkGenerator( ) );
     }
     
-    return server.createWorld( creator );
+    return creator.createWorld( );
   }
   
-  public
-  World loads( String world_label, boolean hyper_breather )
+  public static
+  World loads( String world_label, boolean empty )
   {
-    return this.loads( world_label, hyper_breather, 0xfdffdeadfadecbfL );
+    return loads( world_label, empty, 0xfdffdeadfadecbfL );
   }
   
   /**
@@ -181,23 +145,24 @@ class MiraWorldDataModel
    * @return true if that mf'er is now in the flippin' worlds repository.
    * @throws java.lang.IllegalStateException bruh.. are you really trying to overwrite without consent?
    */
-  public
-  void stores( @NotNull World to_store, @NotNull String repo_label, boolean allow_overwrite )
-    throws IOException, IllegalStateException
+  public static
+  void stores(
+    @NotNull World to_store,
+    @NotNull String repo_path,
+    @NotNull String repo_label,
+    boolean allow_overwrite )
+  throws IOException, IllegalStateException
   {
     to_store.save( );
     
     String world_label = to_store.getName( );
     
-    this.pulse( ).model( ).files( );
     MiraFileUtility.copies(
-      Path.of( server.getWorldContainer( ).getAbsolutePath( ), world_label ),
+      Path.of( Bukkit.getWorldContainer( ).getAbsolutePath( ), world_label ),
       Path.of( repo_path, repo_label ),
       allow_overwrite,
       ( file->is_world_file( file ) || is_world_region_file( file ) ),
-      ( this::is_world_directory )
-    );
-    
+      ( MiraWorldUtility::is_world_directory ) );
   }
   
   /**
@@ -207,28 +172,30 @@ class MiraWorldDataModel
    * @param repository_world_label we got the repo folder.
    * @param target_world_label     how bout that pesky world folder?
    */
-  public
-  boolean remembers( @NotNull String repository_world_label, @NotNull String target_world_label )
-    throws IOException
+  public static
+  boolean remembers(
+    @NotNull String repo_path,
+    @NotNull String repository_world_label,
+    @NotNull String target_world_label )
+  throws IOException
   {
-    if ( !repo( ).exists( ) )
+    File repo_file = new File( repo_path );
+    
+    if ( !repo_file.exists( ) )
     {
       return false;
     }
     
-    pulse( ).plugin( )
-            .log( "[worlds] copies repo world '%s' into local world '%s'...".formatted(
-              repository_world_label,
-              target_world_label
-            ) );
+    /*pulse( ).plugin( ).log( "[worlds] copies repo world '%s' into local world '%s'...".formatted(
+      repository_world_label,
+      target_world_label ) );*/
     
     MiraFileUtility.copies(
       Path.of( repo_path, repository_world_label ),
-      Path.of( server.getWorldContainer( ).getAbsolutePath( ), target_world_label ),
+      Path.of( Bukkit.getWorldContainer( ).getAbsolutePath( ), target_world_label ),
       false,
       ( file->is_world_file( file ) || is_world_region_file( file ) ),
-      ( this::is_world_directory )
-    );
+      ( MiraWorldUtility::is_world_directory ) );
     
     return true;
   }
@@ -239,25 +206,22 @@ class MiraWorldDataModel
    *
    * @param world_label the world to restore, using the 5-digit ID.
    */
-  public
+  public static
   void discards( @NotNull String world_label )
-    throws IllegalStateException, IOException
+  throws IllegalStateException, IOException
   {
-    pulse( ).plugin( ).log( "[worlds] discards '%s'...".formatted( world_label ) );
+    //pulse( ).plugin( ).log( "[worlds] discards '%s'...".formatted( world_label ) );
     
-    if ( server.getWorld( world_label ) != null )
+    @Nullable World world = Bukkit.getWorld( world_label );
+    
+    if ( world != null )
     {
-      this.unloads(
-        Objects.requireNonNull( pulse( ).plugin( )
-                                        .getServer( )
-                                        .getWorld( world_label ) ), false
-      );
+      MiraWorldUtility.unloads( world, false );
     }
     
     MiraFileUtility.deletes( new File(
-      server.getWorldContainer( ).getAbsolutePath( ),
-                                       world_label
-    ) );
+      Bukkit.getWorldContainer( ).getAbsolutePath( ),
+      world_label ) );
   }
   
   
@@ -273,52 +237,48 @@ class MiraWorldDataModel
    * @see java.lang.ReflectiveOperationException
    */
   public
+  static
   void unloads( @NotNull World victim, boolean lemme_save_rq )
-    throws IllegalStateException
+  throws IllegalStateException
   {
     String world_label = victim.getName( );
     List<Player> evictees = victim.getPlayers( );
     
     // the world will not unload if there are any players still within it.
-    pulse( ).plugin( )
-            .log( "[worlds] evicts %d players(s) from '%s' and then unloads...".formatted(
-              evictees.size( ),
-              world_label
-            ) );
+    /*pulse( ).plugin( ).log( "[worlds] evicts %d players(s) from '%s' and then unloads...".formatted(
+      evictees.size( ),
+      world_label ) );*/
     
     for ( Player evictee : evictees )
     {
-      if ( !evictee.teleport( server.getWorlds( ).getFirst( ).getSpawnLocation( ) ) )
+      if ( !evictee.teleport( Bukkit.getWorlds( ).getFirst( ).getSpawnLocation( ) ) )
       {
-        pulse( ).plugin( )
-                .log( "[worlds] unable to evict %s from '%s', kicking...".formatted(
-                  world_label,
-                  evictee.getName( )
-                ) );
+        /*pulse( ).plugin( ).log( "[worlds] unable to evict %s from '%s', kicking...".formatted(
+        world_label,
+          evictee.getName( ) ) )*/
         evictee.kickPlayer(
           "we were unable to evict you from world '%s' during unloading, so we kicked you instead lol.".formatted(
             world_label ) );
       }
     }
     
-    if ( !server.unloadWorld( victim, lemme_save_rq ) )
+    if ( !Bukkit.unloadWorld( victim, lemme_save_rq ) )
     {
-      pulse( ).plugin( )
-              .log( "[worlds] unable to unload '%s', attempting manual dereference...".formatted(
-                world_label ) );
+      /*pulse( ).plugin( ).log( "[worlds] unable to unload '%s', attempting manual dereference...".formatted(
+        world_label ) );*/
       
       try
       {
         Field worlds_field = CraftServer.class.getDeclaredField( "worlds" );
         worlds_field.setAccessible( true );
         
-        ( ( Map<?, ?> ) worlds_field.get( server ) ).remove( victim.getName( ).toLowerCase( ) );
+        ( ( Map<?, ?> ) worlds_field.get( Bukkit.getServer( ) ) ).remove( victim.getName( ).toLowerCase( ) );
         
         worlds_field.setAccessible( false );
       }
       catch ( ReflectiveOperationException exception )
       {
-        pulse( ).plugin( ).log( "[worlds] catastrophic failure; did you reflect correctly?" );
+        //pulse( ).plugin( ).log( "[worlds] catastrophic failure; did you reflect correctly?" );
         
         throw new IllegalStateException( exception );
       }

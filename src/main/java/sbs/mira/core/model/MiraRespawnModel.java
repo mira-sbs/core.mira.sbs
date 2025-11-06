@@ -37,10 +37,10 @@ class MiraRespawnModel
     super( pulse );
     
     this.respawn_timers = new HashMap<>( );
-    new RespawnModelEventListener( this.plugin( ) );
+    new RespawnModelEventListener( this.pulse( ).plugin() );
     
-    Bukkit.getScheduler( ).runTaskTimer(
-      this.plugin( ), ( )->
+    this.server().getScheduler( ).runTaskTimer(
+      this.pulse( ).plugin(), ( )->
       {
         List<UUID> respawned_player_uuids = new ArrayList<>( );
         
@@ -76,21 +76,21 @@ class MiraRespawnModel
   public
   void handle_death( MiraPlayerModel<?> mira_player, boolean can_respawn )
   {
-    if ( mira_player.crafter( ).getGameMode( ) != GameMode.SURVIVAL )
+    if ( mira_player.bukkit( ).getGameMode( ) != GameMode.SURVIVAL )
     {
       return;
     }
     
     this.pulse( ).model( ).items( ).clear( mira_player );
     
-    Player player = mira_player.crafter( );
+    Player player = mira_player.bukkit( );
     player.setHealth( 20 );
     player.setGameMode( GameMode.SPECTATOR );
     player.addPotionEffect( new PotionEffect( PotionEffectType.NAUSEA, 400, 1 ) );
     
     if ( can_respawn )
     {
-      this.respawn_timers.put( mira_player.crafter( ).getUniqueId( ), 8 );
+      this.respawn_timers.put( mira_player.bukkit( ).getUniqueId( ), 8 );
       
       mira_player.messages( "you died! respawning in 8 seconds..." );
     }

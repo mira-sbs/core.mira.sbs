@@ -15,7 +15,6 @@ import org.jetbrains.annotations.NotNull;
  */
 public abstract
 class MiraModel<Pulse extends MiraPulse<?, ?>>
-  implements Breather<Pulse>
 {
   
   private final @NotNull Pulse pulse;
@@ -31,24 +30,11 @@ class MiraModel<Pulse extends MiraPulse<?, ?>>
    *
    * @return stay with us.
    */
-  @Override
   @NotNull
   public
   Pulse pulse( )
   {
     return this.pulse;
-  }
-  
-  public @NotNull
-  MiraPlugin<?> plugin( )
-  {
-    return this.pulse.plugin( );
-  }
-  
-  public @NotNull
-  MiraModel<?> model( )
-  {
-    return this.pulse.model( );
   }
   
   public @NotNull

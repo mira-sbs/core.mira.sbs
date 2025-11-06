@@ -25,24 +25,18 @@ class MiraTeamModel
   
   private @Nullable Team bukkit_team;
   
-  private int kills;
-  private int deaths;
-  
   public
   MiraTeamModel(
     @NotNull String label,
     @NotNull String display_name,
     @NotNull ChatColor colour,
-    int maximum_size
-               )
+    int maximum_size )
   {
     this.label = label;
     this.colour = colour;
     this.maximum_size = maximum_size;
     this.display_name = display_name;
     this.bukkit_team = null;
-    this.kills = 0;
-    this.deaths = 0;
   }
   
   
@@ -51,7 +45,6 @@ class MiraTeamModel
   {
     this( label, display_name, colour, -1 );
   }
-  
   
   public
   MiraTeamModel( @NotNull String label, ChatColor colour, int maximum_size )
@@ -105,7 +98,7 @@ class MiraTeamModel
    * @return an instance of the bukkit representation of this team (during an active match).
    */
   public @NotNull
-  org.bukkit.scoreboard.Team bukkit_team( )
+  org.bukkit.scoreboard.Team bukkit( )
   {
     assert bukkit_team != null;
     
@@ -115,7 +108,8 @@ class MiraTeamModel
   /**
    * @param bukkit_team an instance of the bukkit representation of this team (during an active match).
    */
-  void bukkit_team( @NotNull org.bukkit.scoreboard.Team bukkit_team )
+  public
+  void bukkit( @NotNull org.bukkit.scoreboard.Team bukkit_team )
   {
     this.bukkit_team = bukkit_team;
   }
@@ -123,9 +117,10 @@ class MiraTeamModel
   /**
    * @return true - if the number of players of the team has reached the maximum.
    */
+  public
   boolean full( )
   {
-    return this.bukkit_team( ).getEntries( ).size( ) >= maximum_size;
+    return this.bukkit( ).getEntries( ).size( ) >= maximum_size;
   }
   
   /*public
@@ -156,26 +151,8 @@ class MiraTeamModel
    * @return the label with the team colour applied - followed by a color change to yellow.
    */
   public @NotNull
-  String coloured_label( )
+  String coloured_display_name( )
   {
-    return this.colour( ) + this.label( ) + ChatColor.YELLOW;
-  }
-  
-  /**
-   * increments the `kills` counter - in favor of this team.
-   */
-  public
-  void increment_kills( )
-  {
-    kills++;
-  }
-  
-  /**
-   * increments the `deaths` counter - in spite of this team.
-   */
-  public
-  void increment_deaths( )
-  {
-    deaths++;
+    return this.colour( ) + this.display_name( ) + ChatColor.RESET;
   }
 }

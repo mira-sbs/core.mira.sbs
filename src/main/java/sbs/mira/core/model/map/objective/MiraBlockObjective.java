@@ -5,7 +5,7 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.jetbrains.annotations.NotNull;
-import sbs.mira.core.model.map.Position;
+import sbs.mira.core.model.utility.Position;
 import sbs.mira.core.model.map.MiraObjective;
 
 

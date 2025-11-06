@@ -1,7 +1,6 @@
 package sbs.mira.core.model.map;
 
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.event.block.Action;
@@ -11,70 +10,12 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.jetbrains.annotations.NotNull;
-import sbs.mira.pvp.framework.game.WarMap;
-import sbs.mira.pvp.framework.stored.Activatable;
-import sbs.mira.pvp.framework.stored.SerializedLocation;
-import sbs.mira.core.model.match.MiraGameModeType;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
-/**
- * An extension to WarMap.
- * <p>
- * This is the class that should be extended for map
- * configurations.
- *
- * @author s101601828 @ Swin.
- * @version 1.0
- * @see WarMap
- * <p>
- * Created by Josh on 20/04/2017.
- * @since 1.0
- */
-public abstract
-class MiraMapModelConcrete
-  extends MiraMapModel
+public
+class MiraMapOld_DELETEME
 {
-  
-  protected
-  MiraMapModelConcrete( )
-  {
-    super( );
-    attr( ).put( "itemMerging", true ); // Makes items merge by default.
-  }
-  
-  
-  /**
-   * Returns the gamemodes that are allowed to
-   * be played on this map. For internal usage.
-   *
-   * @return Available gamemodes.
-   */
-  public
-  MiraGameModeType[] game_modes( )
-  {
-    return this.game_modes;
-  }
-  
-  protected
-  void game_modes( MiraGameModeType[] game_modes )
-  {
-    this.game_modes = game_modes;
-  }
-  
-  /**
-   * Sets at which block building should be allowed on
-   * a 'plateau' map. Ask Josh about this if needed.
-   *
-   * @param y Plateau Y.
-   */
-  protected
-  void setPlateauY( int y )
-  {
-    attr( ).put( "plateau", y );
-  }
   
   /**
    * Adds a CTF flag and automatically creates the
@@ -83,7 +24,7 @@ class MiraMapModelConcrete
    * @param teamName Name of team who owns the flag.
    * @param location Location of this flag.
    */
-  protected
+  /*protected
   void addCTFFlag( String teamName, SerializedLocation location )
   {
     if ( !attr( ).containsKey( "flags" ) )
@@ -91,7 +32,7 @@ class MiraMapModelConcrete
       attr( ).put( "flags", new HashMap<String, SerializedLocation>( ) );
     }
     ( ( HashMap<String, SerializedLocation> ) attr( ).get( "flags" ) ).put( teamName, location );
-  }
+  }*/
   
   
   /**
@@ -116,7 +57,7 @@ class MiraMapModelConcrete
     meta.setDisplayName( ChatColor.BLUE + name );
     meta.setLore( loreList );
     result.setItemMeta( meta );
-    result.addUnsafeEnchantment( Enchantment.ARROW_INFINITE, 1 );
+    result.addUnsafeEnchantment( Enchantment.INFINITY, 1 );
     
     return result;
   }
@@ -187,36 +128,5 @@ class MiraMapModelConcrete
       }
     }
     return false;
-  }
-  
-  /**
-   * This method should spawn players around the spectator
-   * spawn to avoid a giant clusterbomb of players.
-   * <p>
-   * For all intents and purposes, this is not needed yet.
-   *
-   * @return Spec spawn.
-   * @since 1.0
-   */
-  public @NotNull
-  Location spectator_spawn_position( )
-  {
-    // Convert the serialized location to a Spigot location.
-    return spectator_spawn_position.toLocation( main.match( ).getCurrentWorld( ), true );
-  }
-  
-  /**
-   * This function is the same as above, except it
-   * crafts the location from the previous match's
-   * world.
-   *
-   * @return Spec spawn.
-   * @since 1.0
-   */
-  public
-  Location getSpectatorSpawn_( )
-  {
-    // Convert the serialized location to a Spigot location.
-    return spectator_spawn_position.toLocation( ( ( MatchController ) main.match( ) ).getPreviousWorld( ), true );
   }
 }

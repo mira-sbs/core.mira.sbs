@@ -4,7 +4,7 @@ import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
-import sbs.mira.pvp.MiraVersePlayer;
+import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.model.map.MiraTeamModel;
 
 /**
@@ -31,11 +31,11 @@ class MiraMatchPlayerJoinTeamEvent
   
   private boolean cancelled;
   
-  private final @NotNull MiraVersePlayer player;
+  private final @NotNull MiraPlayerModel<?> player;
   private final @NotNull MiraTeamModel team;
   
   public
-  MiraMatchPlayerJoinTeamEvent( @NotNull MiraVersePlayer player, @NotNull MiraTeamModel team )
+  MiraMatchPlayerJoinTeamEvent( @NotNull MiraPlayerModel<?> player, @NotNull MiraTeamModel team )
   {
     this.cancelled = false;
     this.player = player;
@@ -43,7 +43,7 @@ class MiraMatchPlayerJoinTeamEvent
   }
   
   public @NotNull
-  MiraVersePlayer player( )
+  MiraPlayerModel<?> player( )
   {
     return player;
   }
