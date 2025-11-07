@@ -71,7 +71,7 @@ class MiraTeamModel
    * @return designated colour for this team - same as chat colours.
    */
   public
-  ChatColor colour( )
+  ChatColor color( )
   {
     return this.colour;
   }
@@ -153,6 +153,6 @@ class MiraTeamModel
   public @NotNull
   String coloured_display_name( )
   {
-    return this.colour( ) + this.display_name( ) + ChatColor.RESET;
+    return this.color( ) + this.display_name( ) + ChatColor.RESET;
   }
 }

@@ -157,7 +157,7 @@ class MiraItemUtility
     {
       @NotNull LeatherArmorMeta meta =
         ( LeatherArmorMeta ) Objects.requireNonNull( armor.getItemMeta( ) );
-      meta.setColor( MiraItemUtility.color_from_chat( team.colour( ) ) );
+      meta.setColor( MiraItemUtility.color_from_chat( team.color( ) ) );
       armor.setItemMeta( meta );
     }
     

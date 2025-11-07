@@ -14,4 +14,10 @@ interface MiraObjective
   void activate( @NotNull World world );
   
   void deactivate( );
+  
+  @NotNull
+  World world( );
+  
+  @NotNull
+  String description( );
 }

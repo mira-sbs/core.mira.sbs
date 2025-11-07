@@ -1,6 +1,5 @@
 package sbs.mira.core.model;
 
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -15,6 +14,7 @@ import sbs.mira.core.MiraPulse;
 import sbs.mira.core.event.match.MiraMatchEndEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerLeaveTeamEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerRespawnEvent;
+import sbs.mira.core.utility.MiraItemUtility;
 
 import java.util.*;
 
@@ -37,10 +37,10 @@ class MiraRespawnModel
     super( pulse );
     
     this.respawn_timers = new HashMap<>( );
-    new RespawnModelEventListener( this.pulse( ).plugin() );
+    new RespawnModelEventListener( this.pulse( ).plugin( ) );
     
-    this.server().getScheduler( ).runTaskTimer(
-      this.pulse( ).plugin(), ( )->
+    this.server( ).getScheduler( ).runTaskTimer(
+      this.pulse( ).plugin( ), ( )->
       {
         List<UUID> respawned_player_uuids = new ArrayList<>( );
         
@@ -81,7 +81,7 @@ class MiraRespawnModel
       return;
     }
     
-    this.pulse( ).model( ).items( ).clear( mira_player );
+    MiraItemUtility.clear( mira_player );
     
     Player player = mira_player.bukkit( );
     player.setHealth( 20 );

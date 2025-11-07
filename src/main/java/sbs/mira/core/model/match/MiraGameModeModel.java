@@ -10,7 +10,6 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.scoreboard.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
@@ -20,6 +19,7 @@ import sbs.mira.core.event.match.MiraMatchPlayerJoinTeamEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerLeaveTeamEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerRespawnEvent;
 import sbs.mira.core.model.MiraPlayerModel;
+import sbs.mira.core.model.MiraScoreboardModel;
 import sbs.mira.core.model.map.MiraTeamModel;
 import sbs.mira.core.model.utility.Position;
 import sbs.mira.core.utility.MiraStringUtility;
@@ -64,10 +64,8 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
   private final @NotNull Map<UUID, Integer> player_deaths;
   private final int environmental_deaths;
   
-  private @Nullable Scoreboard scoreboard;
-  private @Nullable Team team_spectators;
-  @Nullable
-  protected Objective objective;
+  @NotNull
+  protected MiraScoreboardModel scoreboard;
   
   protected boolean active;
   protected boolean permanent_death;
@@ -84,17 +82,22 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     this.team_spawn_coordinates = new HashMap<>( );
     
     this.match = match;
+    this.event_log = new ArrayList<>( );
     this.player_killstreaks = new HashMap<>( );
     this.player_kills = new HashMap<>( );
     this.player_deaths = new HashMap<>( );
     this.environmental_deaths = 0;
-    this.event_log = new ArrayList<>( );
+    this.scoreboard = new MiraScoreboardModel(
+      this.server( ).getScoreboardManager( ),
+      this.label( ),
+      this.match.scoreboard_title( ) );
   }
   
   /*——————————————————————————————————————————————————————————————————————————*/
   
-  public abstract
-  void setup_scoreboard( );
+  @NotNull
+  protected abstract
+  void update_scoreboard( );
   
   protected abstract
   void determine_winner( );
@@ -156,14 +159,6 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
   void description_defense( @NotNull String description_defense )
   {
     this.description_defense = description_defense;
-  }
-  
-  /*——————————————————————————————————————————————————————————————————————————*/
-  
-  protected @NotNull
-  Scoreboard scoreboard( )
-  {
-    return this.scoreboard;
   }
   
   /*——————————————————————————————————————————————————————————————————————————*/
@@ -310,14 +305,18 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     this.player_kills.putIfAbsent( mira_player.uuid( ), 0 );
     this.player_deaths.putIfAbsent( mira_player.uuid( ), 0 );
     
-    this.team_spectators.removeEntry( mira_player.name( ) );
+    this.scoreboard.remove_spectator( mira_player );
   }
   
   @EventHandler (priority = EventPriority.HIGHEST)
   public
   void handle_leave_team( MiraMatchPlayerLeaveTeamEvent event )
   {
-    this.player_killstreaks.put( event.player( ).uuid( ), 0 );
+    MiraPlayerModel<?> mira_player = event.player( );
+    
+    this.player_killstreaks.put( mira_player.uuid( ), 0 );
+    
+    this.scoreboard.add_spectator( mira_player );
   }
   
   /*—[match lifecycle handlers]———————————————————————————————————————————————*/
@@ -334,41 +333,15 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     }
     
     this.active = true;
-    this.scoreboard = this.server( ).getScoreboardManager( ).getNewScoreboard( );
-    
-    String scoreboard_title =
-      String.format( "%s (%s)", this.match.map( ).label( ), this.display_name( ) );
-    
-    if ( scoreboard_title.length( ) > 32 )
-    {
-      scoreboard_title = scoreboard_title.substring( 0, 32 );
-    }
-    
-    this.objective = this.scoreboard( ).registerNewObjective(
-      this.label( ),
-      Criteria.DUMMY,
-      this.display_name( ) );
-    this.objective.setDisplaySlot( DisplaySlot.SIDEBAR );
-    this.objective.setDisplayName( scoreboard_title );
     
     for ( MiraTeamModel mira_team : this.match.map( ).teams( ) )
     {
-      Team bukkit_team = scoreboard.registerNewTeam( mira_team.label( ) );
-      mira_team.bukkit( bukkit_team );
-      bukkit_team.setCanSeeFriendlyInvisibles( true );
-      // todo: allow friendly fire lmfao? like hit each other for no damage maybe?
-      bukkit_team.setAllowFriendlyFire( false );
-      bukkit_team.setPrefix( String.valueOf( mira_team.colour( ) ) );
+      this.scoreboard.bukkit( mira_team );
     }
-    
-    this.team_spectators = scoreboard.registerNewTeam( "spectators" );
-    this.team_spectators.setCanSeeFriendlyInvisibles( true );
-    this.team_spectators.setAllowFriendlyFire( false );
-    this.team_spectators.setPrefix( String.valueOf( ChatColor.LIGHT_PURPLE ) );
     
     for ( MiraPlayerModel<?> player : this.pulse( ).model( ).players( ) )
     {
-      this.team_spectators.addEntry( player.name( ) );
+      this.scoreboard.add_spectator( player );
     }
     
     this.game_task_timer = Bukkit.getScheduler( ).runTaskTimer(

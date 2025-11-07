@@ -19,6 +19,9 @@ interface MiraMatch
   @NotNull
   MiraGameModeModel<?> game_mode( );
   
+  @NotNull
+  String scoreboard_title( );
+  
   /**
    * @return the world (fetched by id) that is currently hosting the map of this match.
    */

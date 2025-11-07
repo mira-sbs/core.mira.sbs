@@ -5,12 +5,12 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.jetbrains.annotations.NotNull;
-import sbs.mira.core.model.utility.Position;
 import sbs.mira.core.model.map.MiraObjective;
+import sbs.mira.core.model.utility.Position;
 
 
 public
-interface MiraBlockObjective
+interface MiraObjectiveCaptureBlock
   extends MiraObjective
 {
   @NotNull
@@ -29,5 +29,11 @@ interface MiraBlockObjective
   Block block( @NotNull World world )
   {
     return this.location( world ).getBlock( );
+  }
+  
+  default @NotNull
+  Block block( )
+  {
+    return this.location( this.world( ) ).getBlock( );
   }
 }

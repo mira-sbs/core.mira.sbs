@@ -6,7 +6,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
-import org.bukkit.scoreboard.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
@@ -17,6 +16,7 @@ import sbs.mira.core.event.match.MiraMatchPlayerLeaveTeamEvent;
 import sbs.mira.core.model.MiraConfigurationModel;
 import sbs.mira.core.model.MiraEventHandlerModel;
 import sbs.mira.core.model.MiraPlayerModel;
+import sbs.mira.core.model.MiraScoreboardModel;
 import sbs.mira.core.model.map.MiraMapModel;
 import sbs.mira.core.model.map.MiraTeamModel;
 import sbs.mira.core.utility.MiraItemUtility;
@@ -65,8 +65,8 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   private boolean concluded;
   private final @Nullable MiraGameModeModel<Pulse> game_mode;
   
-  private final @NotNull Scoreboard scoreboard;
-  private final @NotNull Team team_spectators;
+  private @Nullable MiraScoreboardModel scoreboard_pre_game;
+  private @Nullable MiraScoreboardModel scoreboard_post_game;
   
   public
   MiraMatchModel(
@@ -92,13 +92,6 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     this.state = MiraMatchState.START;
     this.active = false;
     this.game_mode = null;
-    
-    this.scoreboard =
-      Objects.requireNonNull( this.server( ).getScoreboardManager( ) ).getNewScoreboard( );
-    this.team_spectators = this.scoreboard.registerNewTeam( "observing" );
-    this.team_spectators.setCanSeeFriendlyInvisibles( true );
-    this.team_spectators.setAllowFriendlyFire( false );
-    this.team_spectators.setPrefix( String.valueOf( ChatColor.LIGHT_PURPLE ) );
   }
   
   /*—[getters/setters]————————————————————————————————————————————————————————————————————————————*/
@@ -159,6 +152,14 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     assert this.game_mode != null;
     
     return this.game_mode;
+  }
+  
+  @NotNull
+  public
+  String scoreboard_title( )
+  {
+    return
+      String.format( "%s (%s)", this.map.label( ), this.game_mode( ).display_name( ) );
   }
   
   /*—[match lifecycle steps]——————————————————————————————————————————————————————————————————————*/
@@ -325,25 +326,15 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     
     this.state = MiraMatchState.PRE_GAME;
     
-    this.pulse( ).model( ).players( )
-      .stream( )
-      .map( player->player.bukkit( ).getName( ) )
-      .forEach( this.team_spectators::addEntry );
+    this.scoreboard_pre_game = new MiraScoreboardModel(
+      Objects.requireNonNull( this.server( ).getScoreboardManager( ) ),
+      "pre_game",
+      scoreboard_title( ) );
+    this.scoreboard_pre_game.initialise( 4 );
+    
+    this.pulse( ).model( ).players( ).forEach( this.scoreboard_pre_game::add_spectator );
     
     final MiraMatchModel<Pulse> self = this;
-    final Objective objective =
-      this.scoreboard.registerNewObjective( "vote", Criteria.DUMMY, "vote" );
-    
-    String objective_display_name =
-      String.format( "%s (%s)", this.map.label( ), this.game_mode( ).display_name( ) );
-    
-    if ( objective_display_name.length( ) > 32 )
-    {
-      objective_display_name = objective_display_name.substring( 0, 32 );
-    }
-    
-    objective.setDisplayName( objective_display_name );
-    objective.setDisplaySlot( DisplaySlot.SIDEBAR );
     
     this.pre_game_task_timer = new BukkitRunnable( )
     {
@@ -352,18 +343,16 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       public
       void run( )
       {
-        if ( this.seconds_remaining == 0 )
+        if ( self.state( ) != MiraMatchState.PRE_GAME )
         {
-          objective.setDisplaySlot( null );
-          
-          self.conclude_pre_game( );
+          this.cancel( );
           
           return;
         }
         
-        if ( self.state( ) != MiraMatchState.PRE_GAME )
+        if ( this.seconds_remaining == 0 )
         {
-          this.cancel( );
+          self.conclude_pre_game( );
           
           return;
         }
@@ -373,19 +362,12 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
           return;
         }
         
-        objective.getScore( "  " ).setScore( 3 );
-        objective.getScore( "     Starting in" ).setScore( 2 );
+        self.scoreboard_pre_game.set_row( 3, "  " );
+        self.scoreboard_pre_game.set_row( 2, "     Starting in" );
+        self.scoreboard_pre_game.set_row( 1, "     %d second(s)".formatted( seconds_remaining ) );
+        self.scoreboard_pre_game.set_row( 0, " " );
         
-        // clear the old line only - otherwise scoreboard flashes/blinks a lot. >:/
-        self.scoreboard.resetScores( "     " + ( seconds_remaining + 1 ) + " second(s)" );
-        objective.getScore( "     " + seconds_remaining + " second(s)" ).setScore( 1 );
-        
-        objective.getScore( " " ).setScore( 0 );
-        
-        for ( Player online_player : Bukkit.getOnlinePlayers( ) )
-        {
-          online_player.setScoreboard( self.scoreboard );
-        }
+        self.pulse( ).model( ).players( ).forEach( self.scoreboard_pre_game::show );
         
         // todo: check if decrementing after displaying the time is the correct way to do it? shouldn't display 0? or should?
         this.seconds_remaining--;
@@ -406,6 +388,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     // variable can still become null in between the check above and the code below!
     Objects.requireNonNull( this.pre_game_task_timer ).cancel( );
     this.pre_game_task_timer = null;
+    this.scoreboard_pre_game = null;
     
     this.begin_game( );
   }
@@ -465,6 +448,18 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     // fixme: needs to be at the pvp level.
     //this.pulse( ).model( ).respawn( ).clear( );
     
+    String objective_display_name =
+      String.format( "%s (%s)", this.map.label( ), this.game_mode( ).display_name( ) );
+    
+    this.scoreboard_post_game = new MiraScoreboardModel(
+      Objects.requireNonNull( this.server( ).getScoreboardManager( ) ),
+      "post_game",
+      objective_display_name );
+    this.scoreboard_post_game.initialise( 3 );
+    this.scoreboard_post_game.set_row( 2, "  " );
+    this.scoreboard_post_game.set_row( 1, " gg !!" );
+    this.scoreboard_post_game.set_row( 0, " " );
+    
     for ( MiraPlayerModel<?> mira_player : this.pulse( ).model( ).players( ) )
     {
       Player player = mira_player.bukkit( );
@@ -477,10 +472,10 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       
       mira_player.leaves_team( );
       
-      this.team_spectators.addEntry( mira_player.name( ) );
+      this.scoreboard_post_game.add_spectator( mira_player );
+      this.scoreboard_post_game.show( mira_player );
       
       player.playSound( player.getLocation( ), Sound.ENTITY_WITHER_DEATH, 1L, 1L );
-      player.setScoreboard( this.scoreboard );
       player.setGameMode( GameMode.CREATIVE );
       
       MiraItemUtility.clear( mira_player );
@@ -551,6 +546,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     // variable can still become null in between the check above and the code below!
     Objects.requireNonNull( this.post_game_task_timer ).cancel( );
     this.post_game_task_timer = null;
+    this.scoreboard_post_game = null;
     
     // fixme: call this at the lobby level, right?
     //this.pulse( ).model( ).lobby( ).conclude_match( );
@@ -685,10 +681,9 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       mira_player,
       mira_team ) );
     
-    mira_player.joins_team( null );
+    mira_player.leaves_team( );
     
     Player player = mira_player.bukkit( );
-    
     player.teleport( map( ).spectator_spawn_position( ).location( this.world( ), true ) );
     player.setGameMode( GameMode.CREATIVE );
     
