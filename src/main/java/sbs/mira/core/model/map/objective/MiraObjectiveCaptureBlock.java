@@ -11,7 +11,7 @@ import sbs.mira.core.model.utility.Position;
 
 public
 interface MiraObjectiveCaptureBlock
-  extends MiraObjective
+  extends MiraNamedObjective
 {
   @NotNull
   Material material( );

@@ -11,7 +11,6 @@ import sbs.mira.core.event.handler.MiraBlockBreakGuard;
 import sbs.mira.core.event.match.MiraMatchMonumentBuildEvent;
 import sbs.mira.core.model.MiraEventHandlerModel;
 import sbs.mira.core.model.MiraPlayerModel;
-import sbs.mira.core.model.map.MiraTeamModel;
 import sbs.mira.core.model.utility.Region;
 
 import java.util.List;
@@ -23,11 +22,13 @@ class MiraObjectiveBuildMonument<Pulse extends MiraPulse<?, ?>>
   public
   MiraObjectiveBuildMonument(
     @NotNull Pulse pulse,
-    @NotNull MiraTeamModel build_team,
+    @NotNull String monument_name,
+    @NotNull String build_team_label,
+    @NotNull ChatColor build_team_color,
     @NotNull Material build_material,
     @NotNull Region build_region )
   {
-    super( pulse, build_team.label( ), build_team.color( ), build_material, build_region );
+    super( pulse, monument_name, build_team_label, build_team_color, build_material, build_region );
   }
   
   @Override
@@ -66,7 +67,7 @@ class MiraObjectiveBuildMonument<Pulse extends MiraPulse<?, ?>>
           return;
         }
         
-        if ( !self.monument_team.equals( mira_player.team( ).label( ) ) )
+        if ( !self.monument_team_label.equals( mira_player.team( ).label( ) ) )
         {
           mira_player.messages( "you cannot build the enemy's monument!" );
           

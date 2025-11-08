@@ -2,14 +2,12 @@ package sbs.mira.core.model;
 
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 import sbs.mira.core.MiraModel;
-import sbs.mira.core.MiraPlugin;
 import sbs.mira.core.MiraPulse;
 import sbs.mira.core.event.match.MiraMatchEndEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerLeaveTeamEvent;
@@ -29,17 +27,80 @@ public
 class MiraRespawnModel
   extends MiraModel<MiraPulse<?, ?>>
 {
-  private final @NotNull Map<UUID, Integer> respawn_timers;
+  private final boolean can_respawn;
+  @NotNull
+  private final Map<UUID, Integer> respawn_timers;
+  @NotNull
+  private final BukkitTask respawn_timer_task;
   
   public
-  MiraRespawnModel( @NotNull MiraPulse<?, ?> pulse )
+  MiraRespawnModel( @NotNull MiraPulse<?, ?> pulse, boolean can_respawn )
   {
     super( pulse );
     
+    this.can_respawn = can_respawn;
     this.respawn_timers = new HashMap<>( );
-    new RespawnModelEventListener( this.pulse( ).plugin( ) );
     
-    this.server( ).getScheduler( ).runTaskTimer(
+    final MiraRespawnModel self = this;
+    
+    this.event_handler( new MiraEventHandlerModel<PlayerDeathEvent, MiraPulse<?, ?>>(
+      pulse )
+    {
+      @Override
+      public
+      void handle_event( PlayerDeathEvent event )
+      {
+        MiraPlayerModel<?> mira_player =
+          self.pulse( ).model( ).player( event.getEntity( ).getUniqueId( ) );
+        
+        if ( mira_player.bukkit( ).getGameMode( ) != GameMode.SURVIVAL )
+        {
+          return;
+        }
+        
+        MiraItemUtility.clear( mira_player );
+        
+        Player player = mira_player.bukkit( );
+        player.setHealth( 20 );
+        player.setGameMode( GameMode.SPECTATOR );
+        player.addPotionEffect( new PotionEffect( PotionEffectType.NAUSEA, 400, 1 ) );
+        
+        if ( self.can_respawn )
+        {
+          // todo: add configuration option for respawn time...
+          self.respawn_timers.put( mira_player.bukkit( ).getUniqueId( ), 8 );
+          
+          mira_player.messages( "you died! respawning in 8 seconds..." );
+        }
+        else
+        {
+          mira_player.messages( "you died and were ejected from the match and your team..." );
+        }
+      }
+    } );
+    
+    this.event_handler( new MiraEventHandlerModel<MiraMatchPlayerLeaveTeamEvent, MiraPulse<?, ?>>(
+      pulse )
+    {
+      @Override
+      public
+      void handle_event( MiraMatchPlayerLeaveTeamEvent event )
+      {
+        self.respawn_timers.remove( event.player( ).uuid( ) );
+      }
+    } );
+    
+    this.event_handler( new MiraEventHandlerModel<MiraMatchEndEvent, MiraPulse<?, ?>>( pulse )
+    {
+      @Override
+      public
+      void handle_event( MiraMatchEndEvent event )
+      {
+        self.respawn_timers.clear( );
+      }
+    } );
+    
+    this.respawn_timer_task = this.server( ).getScheduler( ).runTaskTimer(
       this.pulse( ).plugin( ), ( )->
       {
         List<UUID> respawned_player_uuids = new ArrayList<>( );
@@ -58,98 +119,14 @@ class MiraRespawnModel
           }
         }
         
-        synchronized ( this.respawn_timers )
-        {
-          respawned_player_uuids.forEach( this.respawn_timers::remove );
-        }
+        respawned_player_uuids.forEach( this.respawn_timers::remove );
       }, 0L, 20L );
   }
   
-  /**
-   * inducts a dead player into the respawning system.
-   * clears their inventory; put them into spectator mode; gives them nausea.
-   * they must wait for the next respawn wave - if there is no permanent death.
-   *
-   * @param mira_player the player who died.
-   * @param can_respawn true - if respawns are allowed and the respawn logic should fire.
-   */
   public
-  void handle_death( MiraPlayerModel<?> mira_player, boolean can_respawn )
+  void deactivate( )
   {
-    if ( mira_player.bukkit( ).getGameMode( ) != GameMode.SURVIVAL )
-    {
-      return;
-    }
-    
-    MiraItemUtility.clear( mira_player );
-    
-    Player player = mira_player.bukkit( );
-    player.setHealth( 20 );
-    player.setGameMode( GameMode.SPECTATOR );
-    player.addPotionEffect( new PotionEffect( PotionEffectType.NAUSEA, 400, 1 ) );
-    
-    if ( can_respawn )
-    {
-      this.respawn_timers.put( mira_player.bukkit( ).getUniqueId( ), 8 );
-      
-      mira_player.messages( "you died! respawning in 8 seconds..." );
-    }
-    else
-    {
-      mira_player.messages( "you died and were ejected from the match and your team..." );
-    }
-  }
-  
-  public
-  void do_respawn( @NotNull UUID player_uuid )
-  {
-    if ( !this.respawn_timers.containsKey( player_uuid ) )
-    {
-      throw new IllegalArgumentException( "player '%s' is not waiting to respawn!".formatted(
-        player_uuid ) );
-    }
-    
-    this.call_event( new MiraMatchPlayerRespawnEvent( this.pulse( ).model( ).player( player_uuid ) ) );
-  }
-  
-  private final
-  class RespawnModelEventListener
-    implements Listener
-  {
-    public
-    RespawnModelEventListener( @NotNull MiraPlugin<?> plugin )
-    {
-      plugin.getServer( ).getPluginManager( ).registerEvents( this, plugin );
-    }
-    
-    /**
-     * player respawn timers should be cancelled when leaving an active match.
-     */
-    @EventHandler
-    public
-    void on_player_leave_team( MiraMatchPlayerLeaveTeamEvent event )
-    {
-      respawn_timers.remove( event.player( ).uuid( ) );
-    }
-    
-    /**
-     * player respawn timers should be cancelled when quitting the server.
-     */
-    @EventHandler
-    public
-    void on_player_quit( PlayerQuitEvent event )
-    {
-      respawn_timers.remove( event.getPlayer( ).getUniqueId( ) );
-    }
-    
-    /**
-     * player respawn timers should be completely cleared when the match ends.
-     */
-    @EventHandler
-    public
-    void on_match_end( MiraMatchEndEvent event )
-    {
-      respawn_timers.clear( );
-    }
+    this.respawn_timer_task.cancel( );
+    this.unregister_event_handlers( );
   }
 }

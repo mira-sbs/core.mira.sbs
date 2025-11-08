@@ -11,8 +11,6 @@ import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
 import sbs.mira.core.event.handler.MiraBlockBreakGuard;
 import sbs.mira.core.model.MiraPlayerModel;
-import sbs.mira.core.model.map.MiraObjective;
-import sbs.mira.core.model.map.MiraTeamModel;
 import sbs.mira.core.model.utility.Region;
 
 import java.util.*;
@@ -20,33 +18,49 @@ import java.util.*;
 public abstract
 class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   extends MiraModel<Pulse>
-  implements MiraObjective
+  implements MiraNamedObjective, MiraTeamObjective
 {
-  protected final @NotNull MiraTeamModel monument_team;
-  protected final @NotNull Material monument_material;
-  protected final @NotNull Region monument_region;
+  @NotNull
+  protected final String monument_name;
+  @NotNull
+  protected final String monument_team_label;
+  @NotNull
+  protected final ChatColor monument_team_color;
+  @NotNull
+  protected final Material monument_material;
+  @NotNull
+  protected final Region monument_region;
   
   private boolean active;
   private boolean block_progress;
-  private @Nullable World world;
+  @Nullable
+  private World world;
   
-  private @Nullable List<Block> monument_blocks;
+  @Nullable
+  private List<Block> monument_blocks;
   private int original_monument_blocks_count;
   
-  private @Nullable MiraBlockBreakGuard<Pulse> blocked_monument_guard;
-  protected final @NotNull List<Block> remaining_blocks;
-  protected final @NotNull Map<UUID, Integer> player_contributions;
+  @Nullable
+  private MiraBlockBreakGuard<Pulse> blocked_monument_guard;
+  @NotNull
+  protected final List<Block> remaining_blocks;
+  @NotNull
+  protected final Map<UUID, Integer> player_contributions;
   
   public
   MiraObjectiveMonument(
     @NotNull Pulse pulse,
-    @NotNull MiraTeamModel monument_team,
+    @NotNull String monument_name,
+    @NotNull String monument_team_label,
+    @NotNull ChatColor monument_team_color,
     @NotNull Material build_material,
     @NotNull Region build_region )
   {
     super( pulse );
     
-    this.monument_team = monument_team;
+    this.monument_name = monument_name;
+    this.monument_team_label = monument_team_label;
+    this.monument_team_color = monument_team_color;
     this.monument_material = build_material;
     this.monument_region = build_region;
     
@@ -103,32 +117,44 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   
   /*——————————————————————————————————————————————————————————————————————————*/
   
-  public @NotNull
+  @NotNull
+  public
+  String name( )
+  {
+    return this.monument_name;
+  }
+  
+  @NotNull
+  public
   String team_label( )
   {
-    return this.monument_team.label( );
+    return this.monument_team_label;
   }
   
-  public @NotNull
+  @NotNull
+  public
   ChatColor team_color( )
   {
-    return this.monument_team.color( );
+    return this.monument_team_color;
   }
   
-  public @NotNull
+  @NotNull
+  public
   Material material( )
   {
     return this.monument_material;
   }
   
-  public @NotNull
+  @NotNull
+  public
   Region region( )
   {
     return this.monument_region;
   }
   
   @Override
-  public @NotNull
+  @NotNull
+  public
   World world( )
   {
     assert this.world != null;
@@ -136,7 +162,8 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
     return this.world;
   }
   
-  public @NotNull
+  @NotNull
+  public
   List<Block> blocks( )
   {
     assert this.monument_blocks != null;
@@ -144,7 +171,8 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
     return this.monument_blocks;
   }
   
-  public @NotNull
+  @NotNull
+  public
   Map<UUID, Integer> player_contributions( )
   {
     assert this.player_contributions != null;

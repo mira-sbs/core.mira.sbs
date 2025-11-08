@@ -5,7 +5,6 @@ import org.bukkit.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-
 /**
  * miral representation of a team.
  * purposed to form a coaxis between maps, game modes and players.
@@ -39,7 +38,6 @@ class MiraTeamModel
     this.bukkit_team = null;
   }
   
-  
   public
   MiraTeamModel( @NotNull String label, ChatColor colour, String display_name )
   {
@@ -59,8 +57,9 @@ class MiraTeamModel
   }
   
   /**
-   * @return programmatic identifier for this team - referred to as a `label`.
+   * @return simple verbal / programmatic identifier for this team - referred to as a label.
    */
+  @NotNull
   public
   String label( )
   {
@@ -70,6 +69,7 @@ class MiraTeamModel
   /**
    * @return designated colour for this team - same as chat colours.
    */
+  @NotNull
   public
   ChatColor color( )
   {
@@ -88,7 +88,8 @@ class MiraTeamModel
   /**
    * @return prettier identifier for this team - good for displaying on scoreboards/formatted text.
    */
-  public @NotNull
+  @NotNull
+  public
   String display_name( )
   {
     return display_name;
@@ -97,8 +98,9 @@ class MiraTeamModel
   /**
    * @return an instance of the bukkit representation of this team (during an active match).
    */
-  public @NotNull
-  org.bukkit.scoreboard.Team bukkit( )
+  @NotNull
+  public
+  Team bukkit( )
   {
     assert bukkit_team != null;
     
@@ -150,7 +152,8 @@ class MiraTeamModel
   /**
    * @return the label with the team colour applied - followed by a color change to yellow.
    */
-  public @NotNull
+  @NotNull
+  public
   String coloured_display_name( )
   {
     return this.color( ) + this.display_name( ) + ChatColor.RESET;

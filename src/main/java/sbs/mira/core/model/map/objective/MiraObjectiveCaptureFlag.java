@@ -23,11 +23,13 @@ import java.util.UUID;
 public
 class MiraObjectiveCaptureFlag<Pulse extends MiraPulse<?, ?>>
   extends MiraObjectiveFlag<Pulse>
-  implements MiraObjectiveTeamHolder
+  implements MiraTeamObjective
 {
   private final static String DESCRIPTION_FORMAT = "    %s[%s] █";
   private final static String STOLEN_DESCRIPTION_FORMAT = "    %s[%s] ▓ !—> [%s]";
   
+  @NotNull
+  private final String flag_name;
   @NotNull
   private final String flag_team_label;
   @NotNull
@@ -52,15 +54,18 @@ class MiraObjectiveCaptureFlag<Pulse extends MiraPulse<?, ?>>
   public
   MiraObjectiveCaptureFlag(
     @NotNull Pulse pulse,
-    @NotNull MiraTeamModel team,
+    @NotNull String name,
+    @NotNull String team_label,
+    @NotNull ChatColor team_color,
     @NotNull Material flag_material,
     @NotNull Position flag_position )
   {
     super( pulse, flag_material, flag_position );
     
     this.allow_quick_steal = false;
-    this.flag_team_label = team.label( );
-    this.flag_team_color = team.color( );
+    this.flag_name = name;
+    this.flag_team_label = team_label;
+    this.flag_team_color = team_color;
     this.flag_material = flag_material;
     this.flag_position = flag_position;
     this.flag_captures = new HashMap<>( );
@@ -91,6 +96,13 @@ class MiraObjectiveCaptureFlag<Pulse extends MiraPulse<?, ?>>
   
   @Override
   public @NotNull
+  String name( )
+  {
+    return "";
+  }
+  
+  @Override
+  public @NotNull
   String description( )
   {
     if ( this.flag_stolen )
@@ -116,6 +128,13 @@ class MiraObjectiveCaptureFlag<Pulse extends MiraPulse<?, ?>>
   String team_label( )
   {
     return this.flag_team_label;
+  }
+  
+  @Override
+  public @NotNull
+  ChatColor team_color( )
+  {
+    return this.flag_team_color;
   }
   
   @Override

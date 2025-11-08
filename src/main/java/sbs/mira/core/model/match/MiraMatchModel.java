@@ -162,6 +162,13 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       String.format( "%s (%s)", this.map.label( ), this.game_mode( ).display_name( ) );
   }
   
+  @Override
+  public
+  int seconds_remaining( )
+  {
+    return this.map( ).match_duration( ) - this.game_mode( ).seconds_elapsed( );
+  }
+  
   /*—[match lifecycle steps]——————————————————————————————————————————————————————————————————————*/
   
   private
@@ -686,9 +693,6 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     Player player = mira_player.bukkit( );
     player.teleport( map( ).spectator_spawn_position( ).location( this.world( ), true ) );
     player.setGameMode( GameMode.CREATIVE );
-    
-    mira_team.bukkit( ).removeEntry( mira_player.name( ) );
-    this.team_spectators.addEntry( mira_player.name( ) );
     
     MiraItemUtility.clear( mira_player );
     // fixme: re-add spectator kit.

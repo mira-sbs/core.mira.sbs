@@ -22,8 +22,10 @@ public abstract
 class MiraPluginDataModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayerModel<?>>
   extends MiraModel<Pulse>
 {
-  public final @NotNull Random rng;
-  private final @NotNull TreeMap<UUID, Player> players;
+  @NotNull
+  public final Random rng;
+  @NotNull
+  private final Map<UUID, Player> players;
   
   private @Nullable MiraConfigurationModel<Pulse> core_config;
   private @Nullable MiraConfigurationModel<Pulse> core_messages;
@@ -35,7 +37,7 @@ class MiraPluginDataModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlay
     super( pulse );
     
     this.rng = new Random( 0xfdffdeadL );
-    this.players = new TreeMap<>( );
+    this.players = new HashMap<>( );
   }
   
   public
@@ -55,15 +57,6 @@ class MiraPluginDataModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlay
   @NotNull
   public abstract
   MiraPlayerModel<?> declares( @NotNull CraftPlayer target );
-  
-  /**
-   * When called, this should clear a player's inventory
-   * and if applicable, give the player a spectator kit.
-   *
-   * @param wp The target player.
-   */
-  public abstract
-  void spectating( @NotNull Player wp );
   
   public
   void destroys( @NotNull UUID victim )
@@ -134,9 +127,8 @@ class MiraPluginDataModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlay
     
     while ( result.contains( "{%d}".formatted( placeholder_index ) ) )
     {
-      result = result.replace(
-        "{%d}".formatted( placeholder_index ),
-        replacements[ placeholder_index ] );
+      result =
+        result.replace( "{%d}".formatted( placeholder_index ), replacements[ placeholder_index ] );
       
       placeholder_index++;
     }
@@ -144,7 +136,8 @@ class MiraPluginDataModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlay
     return result;
   }
   
-  public @NotNull
+  @NotNull
+  public
   File maps_repository( )
   {
     assert this.maps_repository_path != null;

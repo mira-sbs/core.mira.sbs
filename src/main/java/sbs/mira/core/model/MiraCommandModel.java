@@ -5,6 +5,7 @@ import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
 
 /***
+ * tbd.
  * created on 2025-08-18.
  *
  * @author jj.mira.sbs
@@ -16,8 +17,9 @@ class MiraCommandModel<Pulse extends MiraPulse<?, ?>>
   extends MiraModel<Pulse>
 {
   /**
+   * tbd.
    *
-   * @param pulse
+   * @param pulse tbd.
    */
   protected
   MiraCommandModel( @NotNull Pulse pulse )

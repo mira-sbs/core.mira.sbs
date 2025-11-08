@@ -18,24 +18,6 @@ class MiraMapOld_DELETEME
 {
   
   /**
-   * Adds a CTF flag and automatically creates the
-   * HashMap if it does not exist already.
-   *
-   * @param teamName Name of team who owns the flag.
-   * @param location Location of this flag.
-   */
-  /*protected
-  void addCTFFlag( String teamName, SerializedLocation location )
-  {
-    if ( !attr( ).containsKey( "flags" ) )
-    {
-      attr( ).put( "flags", new HashMap<String, SerializedLocation>( ) );
-    }
-    ( ( HashMap<String, SerializedLocation> ) attr( ).get( "flags" ) ).put( teamName, location );
-  }*/
-  
-  
-  /**
    * Creates a map-specific gadget that should be declared final.
    *
    * @param material Material to make the gadget from.
@@ -105,28 +87,5 @@ class MiraMapOld_DELETEME
     {
       return false;
     }
-  }
-  
-  /**
-   * Returns true if a desired action was taken.
-   *
-   * @param event          Event to analyse.
-   * @param desiredActions Desired actions to take.
-   * @return Whether or not desired action was taken.
-   */
-  protected
-  boolean isAction( PlayerInteractEvent event, Action... desiredActions )
-  {
-    if ( desiredActions != null )
-    {
-      for ( Action action : desiredActions )
-      {
-        if ( event.getAction( ) == action )
-        {
-          return true;
-        }
-      }
-    }
-    return false;
   }
 }

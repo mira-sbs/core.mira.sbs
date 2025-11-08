@@ -5,14 +5,16 @@ import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.model.MiraPluginDataModel;
 
 /**
- * [recursive wit.]
+ * miral pulse - representation of a one-way spanning tree with two branches:
+ * i. reference to the bukkit plugin model (Plugin).
+ * ii. reference to the core data model (Model).
  * created on 2017-03-20.
  *
- * @author jj.mira.sbs
- * @author jd.mira.sbs
+ * @author jj stephen
+ * @author jd rose
  * @version 1.0.1
  * @see MiraPlugin
- * @since 1.0.0
+ * @since 1.0.1
  */
 public
 class MiraPulse<Plugin extends MiraPlugin<?>, Model extends MiraPluginDataModel<?, ?>>

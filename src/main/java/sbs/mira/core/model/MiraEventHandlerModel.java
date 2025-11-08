@@ -6,11 +6,14 @@ import org.jetbrains.annotations.NotNull;
 import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
 
-/***
+/**
+ * generic helper model that allows for easier registration of & functional
+ * programming with: bukkit events. mira intends to modularise listeners down
+ * to simple predicates - for the sake of expression and longevity.
  * created on 2025-08-18.
  *
- * @author jj.mira.sbs
- * @author jd.mira.sbs
+ * @author jj stephen
+ * @author jd rose
  * @see MiraPulse
  */
 public abstract
@@ -19,8 +22,9 @@ class MiraEventHandlerModel<Event extends org.bukkit.event.Event, Pulse extends 
   implements Listener
 {
   /**
+   * instantiates a polymorphic event handler model.
    *
-   * @param pulse
+   * @param pulse reference to mira.
    */
   protected
   MiraEventHandlerModel( @NotNull Pulse pulse )
@@ -31,8 +35,10 @@ class MiraEventHandlerModel<Event extends org.bukkit.event.Event, Pulse extends 
   }
   
   /**
+   * procedure called to handle the bukkit event.
+   * the specific event is implementation detail.
    *
-   * @param event
+   * @param event the event to be handled in implementation.
    */
   @EventHandler
   public abstract

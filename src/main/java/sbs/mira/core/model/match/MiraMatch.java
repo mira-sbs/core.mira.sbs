@@ -19,14 +19,16 @@ interface MiraMatch
   @NotNull
   MiraGameModeModel<?> game_mode( );
   
-  @NotNull
-  String scoreboard_title( );
-  
   /**
    * @return the world (fetched by id) that is currently hosting the map of this match.
    */
   @NotNull
   World world( );
+  
+  @NotNull
+  String scoreboard_title( );
+  
+  int seconds_remaining( );
   
   boolean try_join_team(
     @NotNull MiraPlayerModel<?> player,

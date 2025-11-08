@@ -11,6 +11,7 @@ import sbs.mira.core.MiraPulse;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -22,8 +23,8 @@ import java.util.TreeMap;
  * stored, and accessed through here as needed.
  * created on 2017-04-25.
  *
- * @author jj.mira.sbs
- * @author jd.mira.sbs
+ * @author jj stephen
+ * @author jd rose
  * @version 1.0.1
  * @see org.bukkit.configuration.Configuration
  * @since 1.0.0
@@ -32,9 +33,9 @@ public
 class MiraConfigurationModel<Pulse extends MiraPulse<?, ?>>
   extends MiraModel<Pulse>
 {
-  
-  private final @NotNull FileConfiguration file_config;
-  private final Map<String, String> mapping;
+  @NotNull
+  private final FileConfiguration file_config;
+  private final Map<String, String> cache;
   
   /**
    * instantiates with a `FileConfiguration` directly provided.
@@ -48,7 +49,7 @@ class MiraConfigurationModel<Pulse extends MiraPulse<?, ?>>
     super( pulse );
     
     this.file_config = file_config;
-    this.mapping = new TreeMap<>( );
+    this.cache = new HashMap<>( );
   }
   
   /**
@@ -62,39 +63,37 @@ class MiraConfigurationModel<Pulse extends MiraPulse<?, ?>>
   {
     super( pulse );
     
-    this.mapping = new TreeMap<>( );
+    this.cache = new TreeMap<>( );
     
     this.file_config = YamlConfiguration.loadConfiguration( new InputStreamReader(
       Objects.requireNonNull( this.pulse( ).plugin( ).getResource( config_resource_name ) ),
       StandardCharsets.UTF_8
     ) );
     
-    this.pulse( )
-      .plugin( )
-      .log( "(^-^) successfully loaded file configuration '%s'".formatted( config_resource_name ) );
+    this.log( "(^-^) successfully loaded file configuration '%s'".formatted( config_resource_name ) );
   }
   
   /**
-   * returns a string value from the provided key.
+   * looks up a string value (in the configuration) from the provided key.
    * also translates minecraft color codes prefixed with the '&' ampersand symbol.
    *
-   * @param key the yaml key.
+   * @param key the configuration key.
    * @return the value associated with the key (with color coding applied).
    */
-  public @Nullable
+  @Nullable
+  public
   String get( @NotNull String key )
-  throws NullPointerException
   {
-    if ( !mapping.containsKey( key ) )
+    if ( !cache.containsKey( key ) )
     {
       if ( !file_config.isSet( key ) )
       {
         return null;
       }
       
-      mapping.put( key, file_config.getString( key ) );
+      cache.put( key, file_config.getString( key ) );
     }
     
-    return ChatColor.translateAlternateColorCodes( '&', mapping.get( key ) );
+    return ChatColor.translateAlternateColorCodes( '&', cache.get( key ) );
   }
 }

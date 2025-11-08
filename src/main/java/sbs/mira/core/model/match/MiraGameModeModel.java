@@ -6,8 +6,6 @@ import org.bukkit.GameMode;
 import org.bukkit.Sound;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.HandlerList;
-import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
@@ -27,8 +25,15 @@ import sbs.mira.core.utility.MiraStringUtility;
 import java.util.*;
 
 /**
- * any game mode that involves one or more players will share commonalities.
- * extend this class when implementing a gamemode to inherit necessary logic.
+ * miral representation of a game mode.
+ * forms part of the coaxis between maps, game modes and players.
+ * specificially purposed as the engine of the "in-game" segment of the miral
+ * match lifecycle.
+ * implementations of the game mode will behave differently in the presence of
+ * different objectives - depending on what map it has been paired with.
+ * once the match duration limit has been reached - or an objective that ends
+ * the game has been fulfilled - the match is deactivated and the management of
+ * the miral match lifecycle is handed back off to the match for the post-game.
  * created on 2017-03-20.
  *
  * @author jj stephen
@@ -38,7 +43,6 @@ import java.util.*;
 public abstract
 class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
   extends MiraModel<Pulse>
-  implements Listener
 {
   /*—[game mode attributes]———————————————————————————————————————————————————*/
   
@@ -82,6 +86,8 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     this.team_spawn_coordinates = new HashMap<>( );
     
     this.match = match;
+    this.game_task_timer = null;
+    this.seconds_elapsed = 0;
     this.event_log = new ArrayList<>( );
     this.player_killstreaks = new HashMap<>( );
     this.player_kills = new HashMap<>( );
@@ -102,6 +108,9 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
   protected abstract
   void determine_winner( );
   
+  protected abstract
+  void task_timer_tick( );
+  
   /*——————————————————————————————————————————————————————————————————————————*/
   
   protected
@@ -110,15 +119,11 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     this.label = label;
   }
   
-  /*——————————————————————————————————————————————————————————————————————————*/
-  
   protected @NotNull
   String label( )
   {
     return this.label;
   }
-  
-  /*——————————————————————————————————————————————————————————————————————————*/
   
   protected
   void display_name( @NotNull String display_name )
@@ -126,15 +131,11 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     this.display_name = display_name;
   }
   
-  /*——————————————————————————————————————————————————————————————————————————*/
-  
   protected @NotNull
   String display_name( )
   {
     return this.display_name;
   }
-  
-  /*——————————————————————————————————————————————————————————————————————————*/
   
   /**
    * @return correct preceding grammar to verbally objectify the `label`, i.e. "a TDM" - "an FFA".
@@ -145,23 +146,17 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     this.grammar = grammar;
   }
   
-  /*——————————————————————————————————————————————————————————————————————————*/
-  
   protected
   void description_offense( @NotNull String description_offense )
   {
     this.description_offense = description_offense;
   }
   
-  /*——————————————————————————————————————————————————————————————————————————*/
-  
   protected
   void description_defense( @NotNull String description_defense )
   {
     this.description_defense = description_defense;
   }
-  
-  /*——————————————————————————————————————————————————————————————————————————*/
   
   /**
    * @return the amount of seconds elapsed since the game mode started.
@@ -171,8 +166,6 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
   {
     return seconds_elapsed;
   }
-  
-  /*——————————————————————————————————————————————————————————————————————————*/
   
   /**
    * permanent death refers to the inability to respawn once a player has died.
@@ -390,8 +383,6 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     
     this.game_task_timer.cancel( );
     this.game_task_timer = null;
-    
-    HandlerList.unregisterAll( this );
     
     //publishes_statistics( );
   }
