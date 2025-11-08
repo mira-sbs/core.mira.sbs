@@ -1,7 +1,9 @@
 package sbs.mira.core.model.match;
 
-import org.bukkit.*;
-import org.bukkit.craftbukkit.v1_21_R6.entity.CraftPlayer;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
+import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -19,19 +21,23 @@ import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.model.MiraScoreboardModel;
 import sbs.mira.core.model.map.MiraMapModel;
 import sbs.mira.core.model.map.MiraTeamModel;
+import sbs.mira.core.utility.MiraEntityUtility;
 import sbs.mira.core.utility.MiraItemUtility;
 import sbs.mira.core.utility.MiraStringUtility;
 import sbs.mira.core.utility.MiraWorldUtility;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
- * models a single instance of a match within a lobby.
+ * miral representation of a match singleton - within a lobby.
  * matches start with a pre-game on the map - spectating only - followed by a
- * vote to choose the game mode from a pre-defined list configured by the map.
+ * vote to choose the game mode from a pre-defined whitelist defined by the map.
  * once the game mode has been voted in, it is activated and takes control of
  * the lobby - until an objective is fulfilled.
+ * there is a brief pre-game in between the voting and in-game match segments.
  * matches end naturally (per above) and sometimes artificially - which is then
  * followed by a post-game. winners are declared - statistics are calculated and
  * saved - then finally, the world is destroyed and the match lifecycle is complete.
@@ -51,22 +57,32 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   private final int pre_game_duration;
   private final int post_game_duration;
   
-  private final @NotNull Map<MiraGameModeType, List<UUID>> votes;
-  private volatile @Nullable BukkitTask vote_task_timer;
-  private volatile @Nullable BukkitTask pre_game_task_timer;
-  private volatile @Nullable BukkitTask post_game_task_timer;
+  @Nullable
+  private MiraMatchVoteModel<Pulse> votes;
   
-  private final @NotNull MiraMapModel<Pulse> map;
+  @Nullable
+  private BukkitTask vote_task_timer;
+  @Nullable
+  private BukkitTask pre_game_task_timer;
+  @Nullable
+  private BukkitTask post_game_task_timer;
+  
+  @NotNull
+  private final MiraMapModel<Pulse> map;
   private final boolean was_manually_set;
   private final long world_id;
   
-  private @NotNull MiraMatchState state;
+  @NotNull
+  private MiraMatchState state;
   private boolean active;
   private boolean concluded;
-  private final @Nullable MiraGameModeModel<Pulse> game_mode;
+  @Nullable
+  private final MiraGameModeModel<Pulse> game_mode;
   
-  private @Nullable MiraScoreboardModel scoreboard_pre_game;
-  private @Nullable MiraScoreboardModel scoreboard_post_game;
+  @Nullable
+  private MiraScoreboardModel scoreboard_pre_game;
+  @Nullable
+  private MiraScoreboardModel scoreboard_post_game;
   
   public
   MiraMatchModel(
@@ -83,8 +99,6 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     this.pre_game_duration = Integer.parseInt( config.get( "settings.duration.pre_game" ) );
     this.post_game_duration = Integer.parseInt( config.get( "settings.duration.post_game" ) );
     
-    this.votes = new HashMap<>( );
-    
     this.map = map;
     this.was_manually_set = was_manually_set;
     this.world_id = MiraStringUtility.generate_random_world_id( previous_world_id );
@@ -95,6 +109,18 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   }
   
   /*—[getters/setters]————————————————————————————————————————————————————————————————————————————*/
+  
+  @NotNull
+  public
+  MiraMatchVoteModel<Pulse> votes( )
+  {
+    if ( this.votes == null )
+    {
+      throw new IllegalStateException( "voting model has not been defined?" );
+    }
+    
+    return this.votes;
+  }
   
   /**
    * @return the temporary 5 digit identifier for the map world directory of this match.
@@ -246,14 +272,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     }
     
     this.state = MiraMatchState.VOTE;
-    
-    // todo: determine if we should have at least *one* vote to break a no-vote tie.
-    // todo: otherwise - break tie at random. :)
-    
-    for ( MiraGameModeType game_mode_type : this.map.allowed_game_mode_types( ) )
-    {
-      votes.put( game_mode_type, new ArrayList<>( ) );
-    }
+    this.votes = new MiraMatchVoteModel<>( this.pulse( ), this.map.allowed_game_mode_types( ) );
     
     final MiraMatchModel<Pulse> self = this;
     
@@ -295,22 +314,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     Objects.requireNonNull( this.vote_task_timer ).cancel( );
     this.vote_task_timer = null;
     
-    Integer largest_vote_count = null;
-    MiraGameModeType winning_game_mode = null;
-    
-    for ( MiraGameModeType game_mode_type : this.votes.keySet( ) )
-    {
-      int vote_count = this.votes.get( game_mode_type ).size( );
-      
-      if ( largest_vote_count == null || vote_count > largest_vote_count )
-      {
-        largest_vote_count = vote_count;
-        winning_game_mode = game_mode_type;
-      }
-    }
-    
-    // not meeting this assertion is an indication of poor map design. ^-^
-    assert winning_game_mode != null;
+    MiraGameModeType winning_game_mode = this.votes().winning_game_mode();
     
     // todo: broadcast winning game mode + vote count!
     //Bukkit.broadcastMessage(mira().message( "votes.next", game_mode( ).getGrammar( ), game_mode( ).getName( ), getCurrent_map_label( ) ) );
@@ -509,33 +513,32 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       public
       void run( )
       {
-        if ( seconds_remaining == 0 )
+        if ( this.seconds_remaining == 0 )
         {
           conclude_post_game( );
           
           return;
         }
         
-        List<CraftPlayer> online = self.server( ).getOnlinePlayers( );
+        List<Player> players = self.world( ).getPlayers( );
         
-        // spawn up to 8 fireworks - random player every time ^-^ - every 3 seconds.
-        if ( seconds_remaining % 3 == 0 && !online.isEmpty( ) )
+        // spawn up to 8 fireworks - one per in-game player - every 3 seconds.
+        // locations picked at random from all in-game players.
+        // random spawn locations not checked for duplicates (funny).
+        if ( this.seconds_remaining % 3 == 0 && !players.isEmpty( ) )
         {
-          int firework_count = Math.min( online.size( ), 8 );
+          int firework_count = Math.min( players.size( ), 8 );
           
-          while ( firework_count > 0 )
+          do
           {
-            Location firework_location =
-              world( ).getPlayers( ).get( new Random( ).nextInt( world( ).getPlayers( ).size( ) ) ).getLocation( );
-            
-            // fixme: spawn firework.
-            //pulse( ).model( ).entities( ).spawnFirework( firework_location );
+            MiraEntityUtility.spawn_firework( players.get( self.pulse( ).model( ).rng.nextInt(
+              players.size( ) ) ).getLocation( ) );
             
             firework_count--;
-          }
+          } while ( firework_count > 0 );
         }
         
-        seconds_remaining--;
+        this.seconds_remaining--;
       }
     }.runTaskTimer( this.pulse( ).plugin( ), 0L, 20L );
   }
@@ -555,8 +558,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     this.post_game_task_timer = null;
     this.scoreboard_post_game = null;
     
-    // fixme: call this at the lobby level, right?
-    //this.pulse( ).model( ).lobby( ).conclude_match( );
+    this.conclude( );
   }
   
   public
@@ -642,9 +644,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       return false;
     }
     
-    this.pulse( ).plugin( ).log( mira_player.display_name( ) +
-                                 " joins " +
-                                 given_team.coloured_display_name( ) );
+    this.log( mira_player.display_name( ) + " joins " + given_team.coloured_display_name( ) );
     
     mira_player.joins_team( given_team );
     
@@ -747,7 +747,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       
       event.setDeathMessage( death_message );
       
-      this.pulse( ).plugin( ).log( death_message );
+      this.log( death_message );
       this.server( ).getPluginManager( ).callEvent( new MiraMatchPlayerDeathEvent(
         mira_killed,
         mira_killer ) );

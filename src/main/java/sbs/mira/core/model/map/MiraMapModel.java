@@ -368,6 +368,7 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
    *
    * @return a set of game mode types that are available to play on this map.
    */
+  @NotNull
   public
   Set<MiraGameModeType> allowed_game_mode_types( )
   {
@@ -391,7 +392,8 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
    *
    * @return all teams defined for this map.
    */
-  public @NotNull
+  @NotNull
+  public
   Collection<MiraTeamModel> teams( )
   {
     return this.teams.values( );
@@ -415,7 +417,8 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
    * @param team the team requiring a list of its spawn positions.
    * @return the list of spawn positions associated with the given team.
    */
-  public @NotNull
+  @NotNull
+  public
   List<Position> team_spawn_positions( MiraTeamModel team )
   {
     return this.team_spawn_positions.get( team.label( ) );
@@ -461,7 +464,8 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
    * participating in the match.
    *
    */
-  public @NotNull
+  @NotNull
+  public
   Position spectator_spawn_position( )
   {
     assert this.spectator_spawn_position != null;

@@ -8,20 +8,23 @@ import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
 import sbs.mira.core.model.map.MiraMapModel;
-import sbs.mira.core.model.map.MiraMapOld_DELETEME;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
- * models a single instance of a mira lobby within a minecraft server.
+ * miral representation of a lobby singleton - within a minecraft server.
  * the lobby is responsible for handling the lifecycle in between matches.
- * this primarily involves transition between worlds and maps.
- * gamemodes and the voting system are a primary concern of each individual match.
+ * this primarily involves transition between maps and their worlds.
+ * other concerns such as lobby and pre/post game segments are the property
+ * of each individual match.
  * created on 2025-11-05.
  *
  * @author jj stephen
@@ -31,17 +34,23 @@ import java.util.stream.Stream;
 public
 class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
   extends MiraModel<Pulse>
+  implements MiraLobby<Pulse>
 {
-  private final @NotNull Scoreboard scoreboard;
-  private final @NotNull Team team;
-  
+  @NotNull
+  private final Scoreboard scoreboard;
+  @NotNull
+  private final Team team;
+  @NotNull
   private final List<String> map_rotation;
   private int map_rotation_index;
   
-  private @Nullable MiraMatchModel<Pulse> match;
-  private final @Nullable MiraMatchModel<Pulse> previous_match;
+  @Nullable
+  private MiraMatchModel<Pulse> match;
+  @Nullable
+  private final MiraMatchModel<Pulse> previous_match;
   
-  private @Nullable String set_next_map_label;
+  @Nullable
+  private String set_next_map_label;
   
   public
   MiraLobbyModel( @NotNull Pulse pulse )
@@ -94,7 +103,8 @@ class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
   /**
    * @return label of the map that should be played next (null if unset).
    */
-  public @Nullable
+  @Nullable
+  public
   String set_next_map_label( )
   {
     return this.set_next_map_label;
@@ -107,14 +117,16 @@ class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
    *
    * @return a list of maps in a specific order - a rotation - that will be played in this order.
    */
-  public @NotNull
+  @NotNull
+  public
   List<String> map_rotation( )
   {
     return Collections.unmodifiableList( this.map_rotation );
   }
   
-  public @NotNull
-  MiraMatchModel<?> match( )
+  @NotNull
+  public
+  MiraMatchModel<Pulse> match( )
   {
     assert this.match != null;
     
@@ -184,6 +196,6 @@ class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
   public
   void conclude_match( )
   {
-    this.match().conclude( );
+    this.match( ).conclude( );
   }
 }
