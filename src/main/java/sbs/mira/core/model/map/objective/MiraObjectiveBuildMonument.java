@@ -115,7 +115,7 @@ class MiraObjectiveBuildMonument<Pulse extends MiraPulse<?, ?>>
   {
     StringBuilder result = new StringBuilder( );
     result.append( '[' );
-    result.append( this.team_color( ) );
+    result.append( this.defending_team_color( ) );
     
     if ( this.blocks( ).size( ) > 16 )
     {

@@ -40,8 +40,10 @@ import java.util.Objects;
  * there is a brief pre-game in between the voting and in-game match segments.
  * matches end naturally (per above) and sometimes artificially - which is then
  * followed by a post-game. winners are declared - statistics are calculated and
- * saved - then finally, the world is destroyed and the match lifecycle is complete.
- * additional matches must be spawned by the lobby - currently using a map rotation.
+ * saved - then finally, the world is destroyed and the match lifecycle is
+ * complete.
+ * additional matches must be spawned by the lobby - currently using a map
+ * rotation.
  * created on 2017-04-20.
  *
  * @author jj stephen
@@ -314,7 +316,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     Objects.requireNonNull( this.vote_task_timer ).cancel( );
     this.vote_task_timer = null;
     
-    MiraGameModeType winning_game_mode = this.votes().winning_game_mode();
+    MiraGameModeType winning_game_mode = this.votes( ).winning_game_mode( );
     
     // todo: broadcast winning game mode + vote count!
     //Bukkit.broadcastMessage(mira().message( "votes.next", game_mode( ).getGrammar( ), game_mode( ).getName( ), getCurrent_map_label( ) ) );

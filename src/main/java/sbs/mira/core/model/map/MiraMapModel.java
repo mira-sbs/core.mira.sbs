@@ -236,6 +236,8 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
     
     if ( enforce_build_region )
     {
+      assert build_region != null;
+      
       this.event_handler( new MiraBlockPlaceGuard<>(
         this.pulse( ),
         ( block )->build_region.within( block.getLocation( ) ) ) );
@@ -283,7 +285,8 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
    *
    * @return the unique label for this map.
    */
-  public @NotNull
+  @NotNull
+  public
   String label( )
   {
     assert this.label != null;
@@ -292,7 +295,7 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
   }
   
   /**
-   * allows map implementations to set the label of this map.
+   * allows implementations to set the label of this map.
    *
    * @param label the new map label.
    */
@@ -308,7 +311,8 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
    *
    * @return the display name for this map.
    */
-  public @NotNull
+  @NotNull
+  public
   String display_name( )
   {
     assert this.display_name != null;
@@ -317,7 +321,7 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
   }
   
   /**
-   * allows map implementations to set the display name of this map.
+   * allows implementations to set the display name of this map.
    *
    * @param display_name the new map display name.
    */

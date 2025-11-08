@@ -4,7 +4,7 @@ import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
 import sbs.mira.core.model.MiraPlayerModel;
-import sbs.mira.core.model.map.objective.MiraObjectiveCaptureFlag;
+import sbs.mira.core.model.map.objective.MiraObjectiveCapturableFlagBlock;
 
 public
 class MiraMatchFlagDropEvent
@@ -15,12 +15,12 @@ class MiraMatchFlagDropEvent
   @NotNull
   private final MiraPlayerModel<?> player;
   @NotNull
-  private final MiraObjectiveCaptureFlag<?> flag;
+  private final MiraObjectiveCapturableFlagBlock<?> flag;
   
   public
   MiraMatchFlagDropEvent(
     @NotNull MiraPlayerModel<?> player,
-    @NotNull MiraObjectiveCaptureFlag<?> flag )
+    @NotNull MiraObjectiveCapturableFlagBlock<?> flag )
   {
     this.player = player;
     this.flag = flag;
@@ -35,7 +35,7 @@ class MiraMatchFlagDropEvent
   
   @NotNull
   public
-  MiraObjectiveCaptureFlag<?> flag( )
+  MiraObjectiveCapturableFlagBlock<?> flag( )
   {
     return this.flag;
   }

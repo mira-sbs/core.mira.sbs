@@ -21,9 +21,8 @@ import java.util.Map;
 import java.util.UUID;
 
 public
-class MiraObjectiveCaptureFlag<Pulse extends MiraPulse<?, ?>>
-  extends MiraObjectiveFlag<Pulse>
-  implements MiraTeamObjective
+class MiraObjectiveCapturableFlagBlock<Pulse extends MiraPulse<?, ?>>
+  extends MiraObjectiveFlagBlock<Pulse>
 {
   private final static String DESCRIPTION_FORMAT = "    %s[%s] █";
   private final static String STOLEN_DESCRIPTION_FORMAT = "    %s[%s] ▓ !—> [%s]";
@@ -31,9 +30,7 @@ class MiraObjectiveCaptureFlag<Pulse extends MiraPulse<?, ?>>
   @NotNull
   private final String flag_name;
   @NotNull
-  private final String flag_team_label;
-  @NotNull
-  private final ChatColor flag_team_color;
+  private final MiraTeamModel flag_defending_team;
   @NotNull
   private final Material flag_material;
   @NotNull
@@ -49,30 +46,24 @@ class MiraObjectiveCaptureFlag<Pulse extends MiraPulse<?, ?>>
   @Nullable
   private MiraPlayerModel<?> flag_holder;
   
-  /*——————————————————————————————————————————————————————————————————————————*/
-  
   public
-  MiraObjectiveCaptureFlag(
+  MiraObjectiveCapturableFlagBlock(
     @NotNull Pulse pulse,
-    @NotNull String name,
-    @NotNull String team_label,
-    @NotNull ChatColor team_color,
+    @NotNull String flag_name,
+    @NotNull MiraTeamModel flag_team,
     @NotNull Material flag_material,
     @NotNull Position flag_position )
   {
     super( pulse, flag_material, flag_position );
     
     this.allow_quick_steal = false;
-    this.flag_name = name;
-    this.flag_team_label = team_label;
-    this.flag_team_color = team_color;
+    this.flag_name = flag_name;
+    this.flag_defending_team = flag_team;
     this.flag_material = flag_material;
     this.flag_position = flag_position;
     this.flag_captures = new HashMap<>( );
     this.flag_drops = new HashMap<>( );
   }
-  
-  /*——————————————————————————————————————————————————————————————————————————*/
   
   @Override
   public
@@ -95,14 +86,16 @@ class MiraObjectiveCaptureFlag<Pulse extends MiraPulse<?, ?>>
   }
   
   @Override
-  public @NotNull
+  @NotNull
+  public
   String name( )
   {
-    return "";
+    return this.flag_name;
   }
   
   @Override
-  public @NotNull
+  @NotNull
+  public
   String description( )
   {
     if ( this.flag_stolen )
@@ -111,30 +104,25 @@ class MiraObjectiveCaptureFlag<Pulse extends MiraPulse<?, ?>>
       
       return String.format(
         STOLEN_DESCRIPTION_FORMAT,
-        this.flag_team_color,
-        this.flag_team_label,
+        this.flag_defending_team.color( ),
+        this.flag_defending_team.label( ),
         this.flag_holder.name( ) );
     }
     else
     {
-      return String.format( DESCRIPTION_FORMAT, this.flag_team_label, this.flag_team_color );
+      return String.format(
+        DESCRIPTION_FORMAT,
+        this.flag_defending_team.color( ),
+        this.flag_defending_team.label( ) );
     }
   }
   
-  /*——————————————————————————————————————————————————————————————————————————*/
-  
   @Override
-  public @NotNull
-  String team_label( )
+  @NotNull
+  public
+  MiraTeamModel defending_team( )
   {
-    return this.flag_team_label;
-  }
-  
-  @Override
-  public @NotNull
-  ChatColor team_color( )
-  {
-    return this.flag_team_color;
+    return this.flag_defending_team;
   }
   
   @Override
@@ -151,7 +139,35 @@ class MiraObjectiveCaptureFlag<Pulse extends MiraPulse<?, ?>>
     return this.flag_position;
   }
   
-  /*——————————————————————————————————————————————————————————————————————————*/
+  public
+  boolean is_stolen( )
+  {
+    return this.flag_stolen;
+  }
+  
+  @NotNull
+  public
+  MiraPlayerModel<?> flag_holder( )
+  {
+    if ( this.flag_holder == null )
+    {
+      throw new NullPointerException( "flag holder not set?" );
+    }
+    
+    return this.flag_holder;
+  }
+  
+  @NotNull
+  public
+  Location firework_location( )
+  {
+    if ( is_stolen( ) )
+    {
+      return this.flag_holder( ).bukkit( ).getLocation( ).add( 0, 4, 0 );
+    }
+    
+    return this.block( ).getLocation( ).add( 0, 4, 0 );
+  }
   
   public
   void allow_quick_steal( )
@@ -165,8 +181,6 @@ class MiraObjectiveCaptureFlag<Pulse extends MiraPulse<?, ?>>
     
     new MiraFlagQuickStealEventHandler( this.pulse( ) );
   }
-  
-  /*——————————————————————————————————————————————————————————————————————————*/
   
   public
   void try_steal( MiraPlayerModel<?> mira_player )
@@ -185,7 +199,7 @@ class MiraObjectiveCaptureFlag<Pulse extends MiraPulse<?, ?>>
     
     MiraTeamModel team = mira_player.team( );
     
-    if ( team.label( ).equals( this.flag_team_label ) )
+    if ( team.label( ).equals( this.flag_defending_team.label() ) )
     {
       mira_player.messages( "you can't steal your own flag - defend it!" );
       

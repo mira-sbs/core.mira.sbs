@@ -16,6 +16,7 @@ import sbs.mira.core.event.match.MiraMatchPlayerDeathEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerJoinTeamEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerLeaveTeamEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerRespawnEvent;
+import sbs.mira.core.model.MiraEventHandlerModel;
 import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.model.MiraScoreboardModel;
 import sbs.mira.core.model.map.MiraTeamModel;
@@ -46,26 +47,39 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
 {
   /*—[game mode attributes]———————————————————————————————————————————————————*/
   
-  private @Nullable String label;
-  private @Nullable String display_name;
-  private @Nullable String grammar;
+  @Nullable
+  private String label;
+  @Nullable
+  private String display_name;
+  @Nullable
+  private String grammar;
   
-  private @Nullable String description_offense;
-  private @Nullable String description_defense;
+  @Nullable
+  private String description_offense;
+  @Nullable
+  private String description_defense;
   
-  private final @NotNull Map<String, List<Position>> team_spawn_coordinates;
+  @NotNull
+  private final Map<String, List<Position>> team_spawn_coordinates;
   
   /*—[match runtime attributes]———————————————————————————————————————————————*/
   
-  protected final @NotNull MiraMatch match;
-  private @Nullable BukkitTask game_task_timer;
+  @NotNull
+  protected final MiraMatch match;
+  @Nullable
+  private BukkitTask game_task_timer;
   private int seconds_elapsed;
   
   private final @NotNull List<String> event_log;
   
-  private final @NotNull Map<UUID, Integer> player_killstreaks;
-  private final @NotNull Map<UUID, Integer> player_kills;
-  private final @NotNull Map<UUID, Integer> player_deaths;
+  @NotNull
+  private final Map<String, Integer> team_points;
+  @NotNull
+  private final Map<UUID, Integer> player_killstreaks;
+  @NotNull
+  private final Map<UUID, Integer> player_kills;
+  @NotNull
+  private final Map<UUID, Integer> player_deaths;
   private final int environmental_deaths;
   
   @NotNull
@@ -74,7 +88,8 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
   protected boolean active;
   protected boolean permanent_death;
   
-  protected @Nullable String winner;
+  @Nullable
+  protected String winner;
   
   /*——————————————————————————————————————————————————————————————————————————*/
   
@@ -89,6 +104,7 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     this.game_task_timer = null;
     this.seconds_elapsed = 0;
     this.event_log = new ArrayList<>( );
+    this.team_points = new HashMap<>( );
     this.player_killstreaks = new HashMap<>( );
     this.player_kills = new HashMap<>( );
     this.player_deaths = new HashMap<>( );
@@ -99,51 +115,251 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
       this.match.scoreboard_title( ) );
   }
   
-  /*——————————————————————————————————————————————————————————————————————————*/
+  /*—[implementation definitions]—————————————————————————————————————————————————————————————————*/
   
-  @NotNull
+  /**
+   * implementations should update the state of the scoreboard when some sort
+   * of objective / indicator / value has also changed state - within this
+   * procedure (important for ux).
+   */
   protected abstract
   void update_scoreboard( );
   
-  protected abstract
-  void determine_winner( );
-  
+  /**
+   * implementations can use this procedure to receive a callback every 20 ticks
+   * or 1 second - to perform various frequently performed / timer-based tasks.
+   */
   protected abstract
   void task_timer_tick( );
   
-  /*——————————————————————————————————————————————————————————————————————————*/
+  /*—[match lifecycle]————————————————————————————————————————————————————————————————————————————*/
   
+  /**
+   * starts the game mode. occurs after the pre-game completes.
+   */
+  public
+  void activate( )
+  {
+    if ( this.active )
+    {
+      throw new IllegalStateException( "game mode is already active!" );
+    }
+    
+    this.active = true;
+    
+    for ( MiraTeamModel mira_team : this.match.map( ).teams( ) )
+    {
+      this.scoreboard.bukkit( mira_team );
+      this.team_points.put( mira_team.label( ), 0 );
+    }
+    
+    for ( MiraPlayerModel<?> player : this.pulse( ).model( ).players( ) )
+    {
+      this.scoreboard.add_spectator( player );
+    }
+    
+    final MiraGameModeModel<Pulse> self = this;
+    
+    this.event_handler( new MiraEventHandlerModel<MiraMatchPlayerDeathEvent, MiraPulse<?, ?>>( this.pulse( ) )
+    {
+      @EventHandler (priority = EventPriority.LOWEST)
+      public
+      void handle_event( MiraMatchPlayerDeathEvent event )
+      {
+        MiraPlayerModel<?> mira_killed = event.killed( );
+        MiraPlayerModel<?> mira_killer = event.killed( );
+        
+        self.player_deaths.put(
+          mira_killed.uuid( ),
+          self.player_deaths.get( mira_killed.uuid( ) ) + 1 );
+        self.player_killstreaks.put( mira_killed.uuid( ), 0 );
+        
+        if ( event.has_killer( ) )
+        {
+          self.player_kills.put(
+            mira_killer.uuid( ),
+            self.player_kills.get( mira_killer.uuid( ) ) + 1 );
+          
+          int player_killer_killstreak = self.player_deaths.get( mira_killer.uuid( ) );
+          
+          self.player_killstreaks.put( mira_killer.uuid( ), player_killer_killstreak + 1 );
+          
+          self.match.world( ).playSound(
+            mira_killed.location( ),
+            Sound.ENTITY_BLAZE_DEATH,
+            1L,
+            player_killer_killstreak );
+        }
+      }
+    } );
+    
+    this.game_task_timer = Bukkit.getScheduler( ).runTaskTimer(
+      this.pulse( ).plugin( ), ( )->
+      {
+        assert this.game_task_timer != null;
+        assert this.match.state( ) == MiraMatchState.GAME;
+        
+        this.seconds_elapsed++;
+        
+        long seconds_remaining = this.match.map( ).match_duration( ) - this.seconds_elapsed;
+        
+        if ( seconds_remaining % 60 == 0 && seconds_remaining != 0 )
+        {
+          Bukkit.broadcastMessage( "there is %d minute(s) remaining!".formatted( seconds_remaining /
+                                                                                 60 ) );
+        }
+        else if ( seconds_remaining == 30 )
+        {
+          Bukkit.broadcastMessage( "there is 30 seconds remaining!" );
+        }
+        else if ( seconds_remaining < 6 && seconds_remaining > 0 )
+        {
+          Bukkit.broadcastMessage( "there is %d second(s) remaining!".formatted( seconds_remaining ) );
+        }
+        
+        if ( seconds_elapsed( ) >= this.match.map( ).match_duration( ) )
+        {
+          deactivate( ); // the match *always* ends once the match duration has been reached.
+        }
+        // have a 0 `tick` delay before starting the task, and repeat every 20 ticks.
+        // a `tick` is a 20th of a second. minecraft servers run at 20 ticks per second (tps).
+      }, 20L, 20L );
+  }
+  
+  /**
+   * deactivation of the gamemode involves cancelling of the global task and removing hanging references.
+   */
+  public
+  void deactivate( )
+  {
+    if ( this.game_task_timer == null )
+    {
+      throw new IllegalStateException( "game task timer does not exist - cannot deactivate!" );
+    }
+    
+    this.game_task_timer.cancel( );
+    this.game_task_timer = null;
+    
+    //publishes_statistics( );
+  }
+  
+  
+  public
+  void determine_winner( )
+  {
+    List<MiraTeamModel> winners = new ArrayList<>( );
+    int highest_points = 0;
+    
+    for ( MiraTeamModel team : this.match.map( ).teams( ) )
+    {
+      int count = this.team_points( team.label( ) );
+      
+      if ( count == highest_points )
+      {
+        winners.add( team );
+      }
+      else if ( count > highest_points )
+      {
+        winners.clear( );
+        winners.add( team );
+        
+        highest_points = count;
+      }
+    }
+    
+    this.broadcast_winner( winners, "points", highest_points );
+    
+    // todo: "they captured [n] objectives:"
+    // todo: "monument A (100%)"
+    // todo: "monument B (75% - highest progress)"
+  }
+  
+  /*—[getters / setters]——————————————————————————————————————————————————————————————————————————*/
+  
+  /**
+   * simple verbal / programmatic label of this game mode, serving as an identifier.
+   *
+   * @param label the unique label for this map.
+   */
+  @NotNull
+  public
+  String label( )
+  {
+    return this.label;
+  }
+  
+  /**
+   * allows implementations to set the label of this game mode.
+   *
+   * @param label the new game mode label.
+   */
   protected
   void label( @NotNull String label )
   {
     this.label = label;
   }
   
-  protected @NotNull
-  String label( )
+  /**
+   * full unabbreviated / unformatted / grammatical name of this game mode.
+   * it will (of course) be displayed in various places.
+   *
+   * @return the display name for this game mode.
+   */
+  @NotNull
+  public
+  String display_name( )
   {
-    return this.label;
+    assert this.display_name != null;
+    
+    return this.display_name;
   }
   
+  /**
+   * allows implementations to set the display name of this game mode.
+   *
+   * @param display_name the new map display name.
+   */
   protected
   void display_name( @NotNull String display_name )
   {
     this.display_name = display_name;
   }
   
-  protected @NotNull
-  String display_name( )
+  /**
+   * the `grammar` value refers to the correct preceding grammar before verbally
+   * objectifying the `label`, for example:
+   * i. "a TDM", "a CTF", "a DDM"...
+   * ii. "an LMS", "an LTS"...
+   *
+   * @return correct preceding grammar.
+   */
+  @NotNull
+  public
+  String grammar( )
   {
-    return this.display_name;
+    return this.grammar;
   }
   
   /**
-   * @return correct preceding grammar to verbally objectify the `label`, i.e. "a TDM" - "an FFA".
+   * allows implementations to set the correct preceding grammar of this game mode.
+   *
+   * @param display_name the new preceding grammar.
    */
   protected
   void grammar( @NotNull String grammar )
   {
     this.grammar = grammar;
+  }
+  
+  /**
+   *
+   * @return
+   */
+  @NotNull
+  public
+  String description_offense( )
+  {
+    return this.description_offense;
   }
   
   protected
@@ -202,6 +418,20 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
   /*—[stats]——————————————————————————————————————————————————————————————————————————————————————*/
   
   public
+  int team_points( @NotNull String team_label )
+  {
+    return this.team_points.get( team_label );
+  }
+  
+  public
+  int award_team_points( @NotNull String team_label, int point_count )
+  {
+    return this.team_points.put(
+      team_label,
+      this.team_points.getOrDefault( team_label, 0 ) + point_count );
+  }
+  
+  public
   int player_killstreak( @NotNull UUID uuid )
   {
     return this.player_killstreaks.get( uuid );
@@ -220,38 +450,6 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
   }
   
   /*—[event handlers]—————————————————————————————————————————————————————————————————————————————*/
-  
-  @EventHandler (priority = EventPriority.LOWEST)
-  public
-  void handle_player_death( MiraMatchPlayerDeathEvent event )
-  {
-    MiraPlayerModel<?> mira_killed = event.killed( );
-    MiraPlayerModel<?> mira_killer = event.killed( );
-    
-    this.player_deaths.put(
-      mira_killed.uuid( ),
-      this.player_deaths.get( mira_killed.uuid( ) ) + 1 );
-    this.player_killstreaks.put( mira_killed.uuid( ), 0 );
-    
-    if ( event.has_killer( ) )
-    {
-      this.player_kills.put(
-        mira_killer.uuid( ),
-        this.player_kills.get( mira_killer.uuid( ) ) + 1 );
-      
-      int player_killer_killstreak = this.player_deaths.get( mira_killer.uuid( ) );
-      
-      this.player_killstreaks.put( mira_killer.uuid( ), player_killer_killstreak + 1 );
-      
-      this.match.world( ).playSound(
-        mira_killed.location( ),
-        Sound.ENTITY_BLAZE_DEATH,
-        1L,
-        player_killer_killstreak );
-    }
-  }
-  
-  /*——————————————————————————————————————————————————————————————————————————*/
   
   @EventHandler
   public
@@ -310,81 +508,6 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     this.player_killstreaks.put( mira_player.uuid( ), 0 );
     
     this.scoreboard.add_spectator( mira_player );
-  }
-  
-  /*—[match lifecycle handlers]———————————————————————————————————————————————*/
-  
-  /**
-   * starts the game mode. occurs after the pre-game completes.
-   */
-  public
-  void activate( )
-  {
-    if ( this.active )
-    {
-      throw new IllegalStateException( "game mode is already active!" );
-    }
-    
-    this.active = true;
-    
-    for ( MiraTeamModel mira_team : this.match.map( ).teams( ) )
-    {
-      this.scoreboard.bukkit( mira_team );
-    }
-    
-    for ( MiraPlayerModel<?> player : this.pulse( ).model( ).players( ) )
-    {
-      this.scoreboard.add_spectator( player );
-    }
-    
-    this.game_task_timer = Bukkit.getScheduler( ).runTaskTimer(
-      this.pulse( ).plugin( ), ( )->
-      {
-        assert this.game_task_timer != null;
-        assert this.match.state( ) == MiraMatchState.GAME;
-        
-        this.seconds_elapsed++;
-        
-        long seconds_remaining = this.match.map( ).match_duration( ) - this.seconds_elapsed;
-        
-        if ( seconds_remaining % 60 == 0 && seconds_remaining != 0 )
-        {
-          Bukkit.broadcastMessage( "there is %d minute(s) remaining!".formatted( seconds_remaining /
-                                                                                 60 ) );
-        }
-        else if ( seconds_remaining == 30 )
-        {
-          Bukkit.broadcastMessage( "there is 30 seconds remaining!" );
-        }
-        else if ( seconds_remaining < 6 && seconds_remaining > 0 )
-        {
-          Bukkit.broadcastMessage( "there is %d second(s) remaining!".formatted( seconds_remaining ) );
-        }
-        
-        if ( seconds_elapsed( ) >= this.match.map( ).match_duration( ) )
-        {
-          deactivate( ); // the match *always* ends once the match duration has been reached.
-        }
-        // have a 0 `tick` delay before starting the task, and repeat every 20 ticks.
-        // a `tick` is a 20th of a second. minecraft servers run at 20 ticks per second (tps).
-      }, 20L, 20L );
-  }
-  
-  /**
-   * deactivation of the gamemode involves cancelling of the global task and removing hanging references.
-   */
-  public
-  void deactivate( )
-  {
-    if ( this.game_task_timer == null )
-    {
-      throw new IllegalStateException( "game task timer does not exist - cannot deactivate!" );
-    }
-    
-    this.game_task_timer.cancel( );
-    this.game_task_timer = null;
-    
-    //publishes_statistics( );
   }
   
   /**

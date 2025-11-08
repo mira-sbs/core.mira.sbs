@@ -5,7 +5,7 @@ import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
 import sbs.mira.core.model.MiraPlayerModel;
-import sbs.mira.core.model.map.objective.MiraObjectiveCaptureFlag;
+import sbs.mira.core.model.map.objective.MiraObjectiveCapturableFlagBlock;
 
 public
 class MiraMatchFlagStealEvent
@@ -13,7 +13,7 @@ class MiraMatchFlagStealEvent
   implements Cancellable
 {
   private static final @NotNull HandlerList handlers = new HandlerList( );
-  private final @NotNull MiraObjectiveCaptureFlag<?> flag;
+  private final @NotNull MiraObjectiveCapturableFlagBlock<?> flag;
   
   private boolean cancelled;
   
@@ -22,7 +22,7 @@ class MiraMatchFlagStealEvent
   public
   MiraMatchFlagStealEvent(
     @NotNull MiraPlayerModel<?> player,
-    @NotNull MiraObjectiveCaptureFlag<?> flag )
+    @NotNull MiraObjectiveCapturableFlagBlock<?> flag )
   {
     this.cancelled = false;
     this.player = player;
@@ -36,7 +36,7 @@ class MiraMatchFlagStealEvent
   }
   
   public @NotNull
-  MiraObjectiveCaptureFlag<?> flag( )
+  MiraObjectiveCapturableFlagBlock<?> flag( )
   {
     return this.flag;
   }

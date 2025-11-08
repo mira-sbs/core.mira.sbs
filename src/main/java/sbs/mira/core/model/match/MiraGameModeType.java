@@ -2,7 +2,7 @@ package sbs.mira.core.model.match;
 
 
 /**
- * all game mode types currently available / supported on `mira verse`.
+ * all game mode types currently available / supported on `mira-verse`.
  * created on 2017-04-20.
  *
  * @author jj stephen

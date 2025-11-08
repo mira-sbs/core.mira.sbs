@@ -9,9 +9,9 @@ import sbs.mira.core.MiraPulse;
 import sbs.mira.core.model.utility.Position;
 
 public abstract
-class MiraObjectiveFlag<Pulse extends MiraPulse<?, ?>>
+class MiraObjectiveFlagBlock<Pulse extends MiraPulse<?, ?>>
   extends MiraModel<Pulse>
-  implements MiraObjectiveCaptureBlock
+  implements MiraObjectiveCapturableBlock
 {
   private final @NotNull Material flag_material;
   private final @NotNull Position flag_position;
@@ -22,7 +22,7 @@ class MiraObjectiveFlag<Pulse extends MiraPulse<?, ?>>
     world;
   
   public
-  MiraObjectiveFlag(
+  MiraObjectiveFlagBlock(
     @NotNull Pulse pulse,
     @NotNull Material flag_material,
     @NotNull Position flag_position )

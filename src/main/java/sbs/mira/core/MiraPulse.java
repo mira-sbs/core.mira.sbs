@@ -74,6 +74,17 @@ class MiraPulse<Plugin extends MiraPlugin<?>, Model extends MiraPluginDataModel<
   }
   
   /**
+   * log an informational message to the jvm console via the plugin's logger.
+   *
+   * @param message yap to output in the console to the poor sysadmin.
+   */
+  public
+  void log( @NotNull String message )
+  {
+    this.model( ).log( message );
+  }
+  
+  /**
    * just set the pulse brah?
    */
   public static

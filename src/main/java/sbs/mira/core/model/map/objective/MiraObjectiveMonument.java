@@ -1,6 +1,5 @@
 package sbs.mira.core.model.map.objective;
 
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -11,6 +10,7 @@ import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
 import sbs.mira.core.event.handler.MiraBlockBreakGuard;
 import sbs.mira.core.model.MiraPlayerModel;
+import sbs.mira.core.model.map.MiraTeamModel;
 import sbs.mira.core.model.utility.Region;
 
 import java.util.*;
@@ -18,14 +18,12 @@ import java.util.*;
 public abstract
 class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   extends MiraModel<Pulse>
-  implements MiraNamedObjective, MiraTeamObjective
+  implements MiraNamedObjective, MiraObjectiveCapturable
 {
   @NotNull
   protected final String monument_name;
   @NotNull
-  protected final String monument_team_label;
-  @NotNull
-  protected final ChatColor monument_team_color;
+  protected final MiraTeamModel monument_defending_team;
   @NotNull
   protected final Material monument_material;
   @NotNull
@@ -51,16 +49,14 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   MiraObjectiveMonument(
     @NotNull Pulse pulse,
     @NotNull String monument_name,
-    @NotNull String monument_team_label,
-    @NotNull ChatColor monument_team_color,
+    @NotNull MiraTeamModel monument_defending_team,
     @NotNull Material build_material,
     @NotNull Region build_region )
   {
     super( pulse );
     
     this.monument_name = monument_name;
-    this.monument_team_label = monument_team_label;
-    this.monument_team_color = monument_team_color;
+    this.monument_defending_team = monument_defending_team;
     this.monument_material = build_material;
     this.monument_region = build_region;
     
@@ -75,8 +71,6 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
     this.remaining_blocks = new LinkedList<>( this.blocks( ) );
     this.player_contributions = new HashMap<>( );
   }
-  
-  /*——————————————————————————————————————————————————————————————————————————*/
   
   @Override
   public
@@ -126,16 +120,9 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   
   @NotNull
   public
-  String team_label( )
+  MiraTeamModel defending_team( )
   {
-    return this.monument_team_label;
-  }
-  
-  @NotNull
-  public
-  ChatColor team_color( )
-  {
-    return this.monument_team_color;
+    return this.monument_defending_team;
   }
   
   @NotNull
