@@ -1,4 +1,4 @@
-package sbs.mira.core.model.map.objective;
+package sbs.mira.core.model.map.objective.standard;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -8,27 +8,27 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.jetbrains.annotations.NotNull;
 import sbs.mira.core.MiraPulse;
 import sbs.mira.core.event.handler.MiraBlockBreakGuard;
-import sbs.mira.core.event.match.MiraMatchMonumentBuildEvent;
+import sbs.mira.core.event.match.objective.MiraMatchMonumentBuildEvent;
 import sbs.mira.core.model.MiraEventHandlerModel;
 import sbs.mira.core.model.MiraPlayerModel;
+import sbs.mira.core.model.map.MiraTeamModel;
+import sbs.mira.core.model.map.objective.MiraObjectiveCapturableBlockRegion;
 import sbs.mira.core.model.utility.Region;
-
-import java.util.List;
 
 public
 class MiraObjectiveBuildMonument<Pulse extends MiraPulse<?, ?>>
   extends MiraObjectiveMonument<Pulse>
+  implements MiraObjectiveCapturableBlockRegion
 {
   public
   MiraObjectiveBuildMonument(
     @NotNull Pulse pulse,
     @NotNull String monument_name,
-    @NotNull String build_team_label,
-    @NotNull ChatColor build_team_color,
+    @NotNull MiraTeamModel build_team,
     @NotNull Material build_material,
     @NotNull Region build_region )
   {
-    super( pulse, monument_name, build_team_label, build_team_color, build_material, build_region );
+    super( pulse, monument_name, build_team, build_material, build_region );
   }
   
   @Override
@@ -67,7 +67,7 @@ class MiraObjectiveBuildMonument<Pulse extends MiraPulse<?, ?>>
           return;
         }
         
-        if ( !self.monument_team_label.equals( mira_player.team( ).label( ) ) )
+        if ( !self.monument_team.equals( mira_player.team( ) ) )
         {
           mira_player.messages( "you cannot build the enemy's monument!" );
           
@@ -99,7 +99,7 @@ class MiraObjectiveBuildMonument<Pulse extends MiraPulse<?, ?>>
     
     this.event_handler( new MiraBlockBreakGuard<>(
       pulse( ),
-      ( block )->blocks( ).contains( block ) ) );
+      ( block )->remaining_blocks( ).contains( block ) ) );
   }
   
   @Override
@@ -110,33 +110,15 @@ class MiraObjectiveBuildMonument<Pulse extends MiraPulse<?, ?>>
   }
   
   @Override
-  public @NotNull
+  @NotNull
+  public
   String description( )
   {
-    StringBuilder result = new StringBuilder( );
-    result.append( '[' );
-    result.append( this.defending_team_color( ) );
-    
-    if ( this.blocks( ).size( ) > 16 )
-    {
-      // fixme: this lol.
-      throw new IllegalStateException( "build monuments only support up to 16 blocks atm. soz." );
-    }
-    
-    for ( Block block : this.blocks( ) )
-    {
-      result.append( this.remaining_blocks( ).contains( block ) ? '▓' : '█' );
-    }
-    
-    result.append( ChatColor.RESET );
-    result.append( ']' );
-    
-    return result.toString( );
-  }
-  
-  public @NotNull
-  List<Block> remaining_blocks( )
-  {
-    return this.remaining_blocks;
+    return "[" +
+           this.monument_team.color( ) +
+           this.progress_bar( ) +
+           ChatColor.RESET +
+           ']' +
+           " (%.2f%%)".formatted( this.current_progress( ) );
   }
 }

@@ -1,4 +1,4 @@
-package sbs.mira.core.event.match;
+package sbs.mira.core.event.match.objective;
 
 import org.bukkit.block.Block;
 import org.bukkit.event.Cancellable;
@@ -6,8 +6,8 @@ import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
 import sbs.mira.core.model.MiraPlayerModel;
-import sbs.mira.core.model.map.objective.MiraObjectiveBuildMonument;
-import sbs.mira.core.model.map.objective.MiraObjectiveCapturableFlagBlock;
+import sbs.mira.core.model.map.objective.standard.MiraObjectiveBuildMonument;
+import sbs.mira.core.model.map.objective.standard.MiraObjectiveCapturableFlagBlock;
 
 public
 class MiraMatchFlagCaptureEvent
@@ -19,10 +19,14 @@ class MiraMatchFlagCaptureEvent
   
   private boolean cancelled;
   
-  private final @NotNull MiraPlayerModel<?> player;
-  private final @NotNull MiraObjectiveCapturableFlagBlock<?> flag;
-  private final @NotNull MiraObjectiveBuildMonument<?> monument;
-  private final @NotNull Block block_captured;
+  @NotNull
+  private final MiraPlayerModel<?> player;
+  @NotNull
+  private final MiraObjectiveCapturableFlagBlock<?> flag;
+  @NotNull
+  private final MiraObjectiveBuildMonument<?> monument;
+  @NotNull
+  private final Block block_captured;
   
   public
   MiraMatchFlagCaptureEvent(

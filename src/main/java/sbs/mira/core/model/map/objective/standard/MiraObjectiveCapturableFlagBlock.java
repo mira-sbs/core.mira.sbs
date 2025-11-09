@@ -1,4 +1,4 @@
-package sbs.mira.core.model.map.objective;
+package sbs.mira.core.model.map.objective.standard;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -10,6 +10,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraPulse;
 import sbs.mira.core.event.match.*;
+import sbs.mira.core.event.match.objective.MiraMatchFlagCaptureEvent;
+import sbs.mira.core.event.match.objective.MiraMatchFlagDropEvent;
+import sbs.mira.core.event.match.objective.MiraMatchFlagStealEvent;
 import sbs.mira.core.model.MiraEventHandlerModel;
 import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.model.map.MiraTeamModel;
@@ -120,7 +123,7 @@ class MiraObjectiveCapturableFlagBlock<Pulse extends MiraPulse<?, ?>>
   @Override
   @NotNull
   public
-  MiraTeamModel defending_team( )
+  MiraTeamModel team( )
   {
     return this.flag_defending_team;
   }
@@ -240,7 +243,6 @@ class MiraObjectiveCapturableFlagBlock<Pulse extends MiraPulse<?, ?>>
     
     MiraPlayerModel<?> mira_player = this.flag_holder;
     MiraTeamModel team = mira_player.team( );
-    
     
     this.call_event( new MiraMatchFlagDropEvent( mira_player, this ) );
     

@@ -1,4 +1,4 @@
-package sbs.mira.core.model.map.objective;
+package sbs.mira.core.model.map.objective.standard;
 
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -11,6 +11,8 @@ import sbs.mira.core.MiraPulse;
 import sbs.mira.core.event.handler.MiraBlockBreakGuard;
 import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.model.map.MiraTeamModel;
+import sbs.mira.core.model.map.objective.MiraObjectiveCapturableBlockRegion;
+import sbs.mira.core.model.utility.Position;
 import sbs.mira.core.model.utility.Region;
 
 import java.util.*;
@@ -18,12 +20,12 @@ import java.util.*;
 public abstract
 class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   extends MiraModel<Pulse>
-  implements MiraNamedObjective, MiraObjectiveCapturable
+  implements MiraObjectiveCapturableBlockRegion
 {
   @NotNull
   protected final String monument_name;
   @NotNull
-  protected final MiraTeamModel monument_defending_team;
+  protected final MiraTeamModel monument_team;
   @NotNull
   protected final Material monument_material;
   @NotNull
@@ -35,13 +37,12 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   private World world;
   
   @Nullable
-  private List<Block> monument_blocks;
-  private int original_monument_blocks_count;
-  
-  @Nullable
   private MiraBlockBreakGuard<Pulse> blocked_monument_guard;
+  
   @NotNull
   protected final List<Block> remaining_blocks;
+  @NotNull
+  private final List<Position> original_monument_block_positions;
   @NotNull
   protected final Map<UUID, Integer> player_contributions;
   
@@ -49,14 +50,14 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   MiraObjectiveMonument(
     @NotNull Pulse pulse,
     @NotNull String monument_name,
-    @NotNull MiraTeamModel monument_defending_team,
+    @NotNull MiraTeamModel monument_team,
     @NotNull Material build_material,
     @NotNull Region build_region )
   {
     super( pulse );
     
     this.monument_name = monument_name;
-    this.monument_defending_team = monument_defending_team;
+    this.monument_team = monument_team;
     this.monument_material = build_material;
     this.monument_region = build_region;
     
@@ -64,11 +65,10 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
     this.block_progress = false;
     this.world = null;
     
-    this.monument_blocks = null;
-    this.original_monument_blocks_count = -1;
-    
     this.blocked_monument_guard = null;
-    this.remaining_blocks = new LinkedList<>( this.blocks( ) );
+    
+    this.original_monument_block_positions = new ArrayList<>( );
+    this.remaining_blocks = new ArrayList<>( );
     this.player_contributions = new HashMap<>( );
   }
   
@@ -83,10 +83,14 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
     
     this.active = true;
     this.world = world;
-    this.monument_blocks =
-      this.region( ).blocks_matching( this.world, ( block )->block.getType( ) == Material.TARGET );
-    this.original_monument_blocks_count = this.monument_blocks.size( );
-    this.remaining_blocks.addAll( this.monument_blocks );
+    
+    this.remaining_blocks.addAll(
+      this.region( ).blocks_matching( world, ( block )->block.getType( ) == Material.TARGET ) );
+    
+    this.original_monument_block_positions.addAll(
+      this.remaining_blocks.stream( )
+        .map( ( block )->new Position( block.getX( ), block.getY( ), block.getZ( ) ) )
+        .toList( ) );
   }
   
   @Override
@@ -98,14 +102,12 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
       throw new IllegalStateException( "build monument objective not active?" );
     }
     
-    assert this.monument_blocks != null;
+    assert this.remaining_blocks != null;
     
     this.unregister_event_handlers( );
     
     this.active = false;
     this.world = null;
-    this.monument_blocks.clear( );
-    this.monument_blocks = null;
     this.remaining_blocks.clear( );
   }
   
@@ -120,9 +122,9 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   
   @NotNull
   public
-  MiraTeamModel defending_team( )
+  MiraTeamModel team( )
   {
-    return this.monument_defending_team;
+    return this.monument_team;
   }
   
   @NotNull
@@ -151,11 +153,20 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   
   @NotNull
   public
-  List<Block> blocks( )
+  List<Block> remaining_blocks( )
   {
-    assert this.monument_blocks != null;
+    assert this.remaining_blocks != null;
     
-    return this.monument_blocks;
+    return this.remaining_blocks;
+  }
+  
+  @NotNull
+  public
+  List<Position> original_block_positions( )
+  {
+    assert this.original_monument_block_positions != null;
+    
+    return this.original_monument_block_positions;
   }
   
   @NotNull

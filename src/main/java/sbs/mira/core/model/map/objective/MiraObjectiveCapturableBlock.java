@@ -18,19 +18,22 @@ interface MiraObjectiveCapturableBlock
   @NotNull
   Position position( );
   
-  default @NotNull
+  @NotNull
+  default
   Location location( @NotNull World world )
   {
     return this.position( ).location( world, true );
   }
   
-  default @NotNull
+  @NotNull
+  default
   Block block( @NotNull World world )
   {
     return this.location( world ).getBlock( );
   }
   
-  default @NotNull
+  @NotNull
+  default
   Block block( )
   {
     return this.location( this.world( ) ).getBlock( );

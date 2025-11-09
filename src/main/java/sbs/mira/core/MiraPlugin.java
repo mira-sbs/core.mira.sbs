@@ -8,7 +8,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * everything good in mira, built on top of JavaPlugin.
+ * default constructor for framework compliance or reflective usage.
+ * everything good in {@code mira} starts here — build with care. 🫧
  * created on 2017-03-20.
  *
  * @author jj stephen

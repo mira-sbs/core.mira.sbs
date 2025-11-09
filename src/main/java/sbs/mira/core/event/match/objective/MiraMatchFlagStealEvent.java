@@ -1,11 +1,11 @@
-package sbs.mira.core.event.match;
+package sbs.mira.core.event.match.objective;
 
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
 import sbs.mira.core.model.MiraPlayerModel;
-import sbs.mira.core.model.map.objective.MiraObjectiveCapturableFlagBlock;
+import sbs.mira.core.model.map.objective.standard.MiraObjectiveCapturableFlagBlock;
 
 public
 class MiraMatchFlagStealEvent

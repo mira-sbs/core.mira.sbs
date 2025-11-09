@@ -18,7 +18,7 @@
   <version>1.0.1</version>
   <packaging>jar</packaging>
 
-  <name>core.mira.sbs</name>
+  <name>mira-core</name>
   <description>sharing is caring.</description>
   <url>https://core.mira.sbs/</url>
 

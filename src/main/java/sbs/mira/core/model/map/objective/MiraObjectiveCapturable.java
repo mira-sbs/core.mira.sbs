@@ -7,7 +7,7 @@ import sbs.mira.core.model.map.MiraTeamModel;
 /**
  * public interface for map objectives that are held by a team - defensively -
  * to be protected from offending teams.
- *
+  *
  * @author jj stephen
  * @author nibs
  * @version 1.0.1
@@ -25,5 +25,5 @@ interface MiraObjectiveCapturable
    * @return the team who owns and defends this objective.
    */
   @NotNull
-  MiraTeamModel defending_team( );
+  MiraTeamModel team( );
 }

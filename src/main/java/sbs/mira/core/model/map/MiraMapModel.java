@@ -442,6 +442,12 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
     this.team_spawn_positions.get( team_label ).add( team_spawn_position );
   }
   
+  protected
+  void team_spawn( @NotNull MiraTeamModel mira_team, @NotNull Position team_spawn_position )
+  {
+    this.team_spawn( mira_team.label( ), team_spawn_position );
+  }
+  
   /**
    * positions are not real locations within minecraft worlds - and are often
    * retrieved randomly instead of sequentially.

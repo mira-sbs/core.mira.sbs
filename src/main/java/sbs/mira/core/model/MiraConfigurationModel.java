@@ -34,8 +34,9 @@ class MiraConfigurationModel<Pulse extends MiraPulse<?, ?>>
   extends MiraModel<Pulse>
 {
   @NotNull
-  private final FileConfiguration file_config;
-  private final Map<String, String> cache;
+  protected final FileConfiguration file_config;
+  @NotNull
+  protected final Map<String, String> cache;
   
   /**
    * instantiates with a `FileConfiguration` directly provided.

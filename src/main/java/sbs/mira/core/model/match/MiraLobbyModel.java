@@ -1,23 +1,13 @@
 package sbs.mira.core.model.match;
 
-import org.bukkit.ChatColor;
-import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.scoreboard.Team;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
+import sbs.mira.core.model.configuration.MiraMapRotationModel;
 import sbs.mira.core.model.map.MiraMapModel;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Stream;
 
 /**
  * miral representation of a lobby singleton - within a minecraft server.
@@ -37,78 +27,23 @@ class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
   implements MiraLobby<Pulse>
 {
   @NotNull
-  private final Scoreboard scoreboard;
-  @NotNull
-  private final Team team;
-  @NotNull
-  private final List<String> map_rotation;
-  private int map_rotation_index;
-  
+  private final MiraMapRotationModel<Pulse> map_rotation;
   @Nullable
   private MiraMatchModel<Pulse> match;
   @Nullable
   private final MiraMatchModel<Pulse> previous_match;
-  
-  @Nullable
-  private String set_next_map_label;
   
   public
   MiraLobbyModel( @NotNull Pulse pulse )
   {
     super( pulse );
     
+    this.map_rotation = new MiraMapRotationModel<>( pulse );
     this.match = null;
     this.previous_match = null;
-    
-    this.set_next_map_label = null;
-    this.map_rotation = new ArrayList<>( );
-    this.map_rotation_index = 0;
-    
-    this.scoreboard =
-      Objects.requireNonNull( this.server( ).getScoreboardManager( ) ).getNewScoreboard( );
-    this.team = this.scoreboard.registerNewTeam( "observing" );
-    this.team.setCanSeeFriendlyInvisibles( true );
-    this.team.setAllowFriendlyFire( false );
-    this.team.setPrefix( String.valueOf( ChatColor.LIGHT_PURPLE ) );
-    
-    try (
-      Stream<String> stream = Files.lines( Paths.get( this.pulse( ).plugin( ).getDataFolder( ) +
-                                                      File.separator +
-                                                      "rotation" ) )
-    )
-    {
-      stream.forEachOrdered( map_rotation::add );
-    }
-    catch ( IOException e )
-    {
-      // todo: error handling for here...
-      //this.state = MiraMatchState.FAILED;
-    }
   }
   
   /*—[getters/setters]————————————————————————————————————————————————————————*/
-  
-  /**
-   * the next map to be played in the lobby is usually the next in the rotation.
-   * however, any map can be manually set out of rotation and should be accounted for.
-   *
-   * @param set_next_map_label label of the map that should be played next (null to unset).
-   */
-  public
-  void set_next_map_label( @Nullable String set_next_map_label )
-  {
-    this.set_next_map_label = set_next_map_label;
-  }
-  
-  /**
-   * @return label of the map that should be played next (null if unset).
-   */
-  @Nullable
-  public
-  String set_next_map_label( )
-  {
-    return this.set_next_map_label;
-  }
   
   /**
    * rotation is a volatile list of maps that should ideally change often to
@@ -119,9 +54,9 @@ class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
    */
   @NotNull
   public
-  List<String> map_rotation( )
+  MiraMapRotationModel<Pulse> map_rotation( )
   {
-    return Collections.unmodifiableList( this.map_rotation );
+    return this.map_rotation;
   }
   
   @NotNull
@@ -169,25 +104,13 @@ class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
   void begin_match( )
   throws IOException
   {
-    String chosen_map_label;
-    boolean was_manually_set;
+    String next_map_label = this.map_rotation.next_map_label( );
+    boolean was_manually_set = this.map_rotation.set_next_map( );
     
-    if ( this.set_next_map_label == null )
-    {
-      chosen_map_label = this.map_rotation.get( this.map_rotation_index );
-      was_manually_set = false;
-      
-      this.map_rotation_index++; // todo: needs to wrap.
-    }
-    else
-    {
-      chosen_map_label = this.set_next_map_label;
-      was_manually_set = true;
-      
-      this.set_next_map_label = null;
-    }
+    this.map_rotation.advance( );
     
-    MiraMapModel<Pulse> map = null; // todo: determine map?
+    // fixme: determine map from chosen map label.
+    MiraMapModel<Pulse> map = null;
     
     this.match = new MiraMatchModel<>( this.pulse( ), map, was_manually_set, -1 );
     this.match.begin( );

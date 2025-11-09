@@ -12,8 +12,10 @@ import java.util.function.Predicate;
 public
 class Region
 {
-  private final @NotNull Position position_1;
-  private final @NotNull Position position_2;
+  @NotNull
+  private final Position position_1;
+  @NotNull
+  private final Position position_2;
   
   public
   Region( @NotNull Position position1, @NotNull Position position2 )
@@ -46,7 +48,8 @@ class Region
       location.getBlockZ( ) <= this.position_2.z( );
   }
   
-  public @NotNull
+  @NotNull
+  public
   List<Block> blocks_matching( @NotNull World world, @NotNull Predicate<Block> block_predicate )
   {
     List<Block> result = new LinkedList<>( );
@@ -80,5 +83,16 @@ class Region
     }
     
     return result;
+  }
+  
+  @NotNull
+  public
+  List<Position> positions_matching(
+    @NotNull World world,
+    @NotNull Predicate<Block> block_predicate )
+  {
+    return this.blocks_matching( world, block_predicate ).stream( )
+      .map( ( block )->new Position( block.getX( ), block.getY( ), block.getZ( ) ) )
+      .toList( );
   }
 }

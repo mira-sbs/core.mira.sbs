@@ -1,4 +1,4 @@
-package sbs.mira.core.model.map.objective;
+package sbs.mira.core.model.map.objective.standard;
 
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
+import sbs.mira.core.model.map.objective.MiraObjectiveCapturableBlock;
 import sbs.mira.core.model.utility.Position;
 
 public abstract
