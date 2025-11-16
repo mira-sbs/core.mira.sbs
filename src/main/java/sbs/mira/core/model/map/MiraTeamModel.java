@@ -17,12 +17,16 @@ import org.jetbrains.annotations.Nullable;
 public final
 class MiraTeamModel
 {
-  private final @NotNull String label;
-  private final @NotNull String display_name;
-  private final @NotNull ChatColor colour;
+  @NotNull
+  private final String label;
+  @NotNull
+  private final String display_name;
+  @NotNull
+  private final ChatColor colour;
   private final int maximum_size;
   
-  private @Nullable Team bukkit_team;
+  @Nullable
+  private Team bukkit_team;
   
   public
   MiraTeamModel(
@@ -63,7 +67,7 @@ class MiraTeamModel
   public
   String label( )
   {
-    return label;
+    return this.label;
   }
   
   /**
@@ -102,7 +106,10 @@ class MiraTeamModel
   public
   Team bukkit( )
   {
-    assert bukkit_team != null;
+    if ( this.bukkit_team == null )
+    {
+      throw new IllegalStateException( "bukkit team was not set?" );
+    }
     
     return bukkit_team;
   }
@@ -111,7 +118,7 @@ class MiraTeamModel
    * @param bukkit_team an instance of the bukkit representation of this team (during an active match).
    */
   public
-  void bukkit( @NotNull org.bukkit.scoreboard.Team bukkit_team )
+  void bukkit( @NotNull Team bukkit_team )
   {
     this.bukkit_team = bukkit_team;
   }
@@ -157,5 +164,12 @@ class MiraTeamModel
   String coloured_display_name( )
   {
     return this.color( ) + this.display_name( ) + ChatColor.RESET;
+  }
+  
+  @Override
+  public
+  String toString( )
+  {
+    return this.coloured_display_name( );
   }
 }

@@ -21,17 +21,15 @@ class MiraScoreboardModel
   public
   MiraScoreboardModel(
     @NotNull ScoreboardManager scoreboard_manager,
-    @NotNull String objective_label,
-    @NotNull String objective_display_name )
+    @NotNull String objective_label )
   {
     this.scoreboard = scoreboard_manager.getNewScoreboard( );
     
     this.objective = this.scoreboard.registerNewObjective(
       objective_label,
       Criteria.DUMMY,
-      objective_display_name );
+      objective_label );
     this.objective.setDisplaySlot( DisplaySlot.SIDEBAR );
-    this.objective.setDisplayName( objective_display_name );
     
     this.team_spectators = this.scoreboard.registerNewTeam( "spectators" );
     this.team_spectators.setDisplayName( ChatColor.LIGHT_PURPLE + "observers" + ChatColor.RESET );
@@ -41,9 +39,16 @@ class MiraScoreboardModel
     this.scoreboard_entries = null;
   }
   
-  public void initialise(int scoreboard_entries_length)
+  public
+  void display_name( @NotNull String objective_display_name )
   {
-    this.scoreboard_entries = new String[scoreboard_entries_length];
+    this.objective.setDisplayName( objective_display_name );
+  }
+  
+  public
+  void initialise( int scoreboard_entries_length )
+  {
+    this.scoreboard_entries = new String[ scoreboard_entries_length ];
   }
   
   public
@@ -61,6 +66,24 @@ class MiraScoreboardModel
     this.scoreboard.resetScores( old_value );
     this.scoreboard_entries[ row_index ] = new_value;
     this.objective.getScore( new_value ).setScore( row_index );
+  }
+  
+  public
+  void reset( )
+  {
+    if ( this.scoreboard_entries == null )
+    {
+      return;
+    }
+    
+    for ( String entry : this.scoreboard_entries )
+    {
+      assert entry != null;
+      
+      this.scoreboard.resetScores( entry );
+    }
+    
+    this.scoreboard_entries = null;
   }
   
   public
@@ -91,17 +114,15 @@ class MiraScoreboardModel
     this.team_spectators.removeEntry( mira_player.name( ) );
   }
   
-  @NotNull
   public
-  Team bukkit( @NotNull MiraTeamModel mira_team )
+  void register( @NotNull MiraTeamModel mira_team )
   {
     Team result = this.scoreboard.registerNewTeam( mira_team.label( ) );
     result.setDisplayName( mira_team.coloured_display_name( ) );
     result.setCanSeeFriendlyInvisibles( true );
-    // todo: allow friendly fire lmfao? like hit each other for no damage maybe?
     result.setAllowFriendlyFire( false );
     result.setPrefix( String.valueOf( mira_team.color( ) ) );
     
-    return result;
+    mira_team.bukkit( result );
   }
 }

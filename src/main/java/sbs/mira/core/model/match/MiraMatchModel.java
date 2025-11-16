@@ -1,6 +1,5 @@
 package sbs.mira.core.model.match;
 
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -15,10 +14,7 @@ import sbs.mira.core.MiraPulse;
 import sbs.mira.core.event.match.MiraMatchPlayerDeathEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerJoinTeamEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerLeaveTeamEvent;
-import sbs.mira.core.model.MiraConfigurationModel;
-import sbs.mira.core.model.MiraEventHandlerModel;
-import sbs.mira.core.model.MiraPlayerModel;
-import sbs.mira.core.model.MiraScoreboardModel;
+import sbs.mira.core.model.*;
 import sbs.mira.core.model.map.MiraMapModel;
 import sbs.mira.core.model.map.MiraTeamModel;
 import sbs.mira.core.utility.MiraEntityUtility;
@@ -30,6 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * miral representation of a match singleton - within a lobby.
@@ -69,8 +66,8 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   @Nullable
   private BukkitTask post_game_task_timer;
   
-  @NotNull
-  private final MiraMapModel<Pulse> map;
+  @Nullable
+  private MiraMapModel<Pulse> map;
   private final boolean was_manually_set;
   private final long world_id;
   
@@ -79,17 +76,17 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   private boolean active;
   private boolean concluded;
   @Nullable
-  private final MiraGameModeModel<Pulse> game_mode;
+  private MiraGameModeModel<Pulse> game_mode;
+  
+  @NotNull
+  private final MiraScoreboardModel scoreboard;
   
   @Nullable
-  private MiraScoreboardModel scoreboard_pre_game;
-  @Nullable
-  private MiraScoreboardModel scoreboard_post_game;
+  private MiraRespawnModel respawn;
   
   public
   MiraMatchModel(
     @NotNull Pulse pulse,
-    @NotNull MiraMapModel<Pulse> map,
     boolean was_manually_set,
     long previous_world_id )
   {
@@ -101,13 +98,17 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     this.pre_game_duration = Integer.parseInt( config.get( "settings.duration.pre_game" ) );
     this.post_game_duration = Integer.parseInt( config.get( "settings.duration.post_game" ) );
     
-    this.map = map;
+    this.map = null;
     this.was_manually_set = was_manually_set;
     this.world_id = MiraStringUtility.generate_random_world_id( previous_world_id );
     
     this.state = MiraMatchState.START;
     this.active = false;
     this.game_mode = null;
+    
+    this.scoreboard = new MiraScoreboardModel(
+      Objects.requireNonNull( this.server( ).getScoreboardManager( ) ),
+      "mira_match" );
   }
   
   /*—[getters/setters]————————————————————————————————————————————————————————————————————————————*/
@@ -136,7 +137,8 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   /*——————————————————————————————————————————————————————————————————————————*/
   
   @Override
-  public @NotNull
+  @NotNull
+  public
   World world( )
   {
     return Objects.requireNonNull( this.server( ).getWorld( String.valueOf( this.world_id ) ) );
@@ -156,7 +158,8 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   /*——————————————————————————————————————————————————————————————————————————*/
   
   @Override
-  public @NotNull
+  @NotNull
+  public
   MiraMatchState state( )
   {
     return this.state;
@@ -165,9 +168,15 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   /*——————————————————————————————————————————————————————————————————————————*/
   
   @Override
-  public @NotNull
+  @NotNull
+  public
   MiraMapModel<Pulse> map( )
   {
+    if ( this.map == null )
+    {
+      throw new IllegalStateException( "map has not been defined?" );
+    }
+    
     return this.map;
   }
   
@@ -177,7 +186,10 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   public @NotNull
   MiraGameModeModel<Pulse> game_mode( )
   {
-    assert this.game_mode != null;
+    if ( this.game_mode == null )
+    {
+      throw new IllegalStateException( "game mode has not been defined?" );
+    }
     
     return this.game_mode;
   }
@@ -187,7 +199,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   String scoreboard_title( )
   {
     return
-      String.format( "%s (%s)", this.map.label( ), this.game_mode( ).display_name( ) );
+      String.format( "%s (%s)", this.map( ).label( ), this.game_mode( ).display_name( ) );
   }
   
   @Override
@@ -216,7 +228,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       throw new IllegalStateException( "lobby state mismatch! expected: %s".formatted(
         expected_state ) );
     }
-    if ( this.map.active( ) != expected_map_active )
+    if ( this.map( ).active( ) != expected_map_active )
     {
       throw new IllegalStateException( "match map active state mismatch! expected: %s".formatted(
         expected_map_active ) );
@@ -232,9 +244,18 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
    * @throws IOException file operation failed.
    */
   public
-  void begin( )
+  void begin(
+    @NotNull MiraMapModel<Pulse> map,
+    @NotNull MiraGameModeRepository<Pulse> game_mode_repository )
   throws IOException
   {
+    if ( this.map != null )
+    {
+      throw new IllegalStateException( "match has already begun?" );
+    }
+    
+    this.map = map;
+    
     this.assert_state( false, MiraMatchState.START, false );
     
     this.active = true;
@@ -247,14 +268,13 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     
     for ( MiraPlayerModel<?> player : this.pulse( ).model( ).players( ) )
     {
-      // TODO: fix update.
-      //player.update( );
+      player.update( );
       player.bukkit( ).teleport( this.map.spectator_spawn_position( ).location(
         this.world( ),
         true ) );
     }
     
-    this.begin_vote( );
+    this.begin_vote( game_mode_repository );
   }
   
   /**
@@ -264,7 +284,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
    * the end of the vote timer follows.
    */
   private
-  void begin_vote( )
+  void begin_vote( @NotNull MiraGameModeRepository<Pulse> game_mode_repository )
   {
     this.assert_state( true, MiraMatchState.START, false );
     
@@ -273,10 +293,17 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       throw new IllegalStateException( "match vote has already begun!" );
     }
     
+    final Set<MiraGameModeType> allowed_game_mode_types = this.map( ).allowed_game_mode_types( );
+    
     this.state = MiraMatchState.VOTE;
-    this.votes = new MiraMatchVoteModel<>( this.pulse( ), this.map.allowed_game_mode_types( ) );
+    this.votes = new MiraMatchVoteModel<>( this.pulse( ), allowed_game_mode_types );
     
     final MiraMatchModel<Pulse> self = this;
+    
+    final int scoreboard_row_count = allowed_game_mode_types.size( ) + 3;
+    
+    this.scoreboard.reset( );
+    this.scoreboard.initialise( scoreboard_row_count );
     
     this.vote_task_timer = new BukkitRunnable( )
     {
@@ -285,14 +312,53 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       public
       void run( )
       {
-        if ( this.seconds_remaining == 0 )
+        if ( self.state( ) != MiraMatchState.VOTE )
         {
-          self.conclude_vote( );
+          this.cancel( );
           
           return;
         }
         
-        seconds_remaining--;
+        if ( this.seconds_remaining == 0 )
+        {
+          self.conclude_vote( game_mode_repository );
+          
+          return;
+        }
+        
+        if ( self.server( ).getOnlinePlayers( ).isEmpty( ) )
+        {
+          return;
+        }
+        
+        this.seconds_remaining--;
+        
+        self.scoreboard.display_name( self.pulse( ).model( ).message(
+          "match.scoreboard.vote.title",
+          self.map( ).display_name( ),
+          MiraStringUtility.time_ss_to_mm_ss( seconds_remaining ) ) );
+        
+        int row_index = scoreboard_row_count - 1;
+        
+        self.scoreboard.set_row( row_index--, "  " );
+        self.scoreboard.set_row(
+          row_index--,
+          self.pulse( ).model( ).message( "match.scoreboard.vote.now_voting" ) );
+        
+        for ( MiraGameModeType game_mode_type : allowed_game_mode_types )
+        {
+          self.scoreboard.set_row(
+            row_index--,
+            self.pulse( ).model( ).message(
+              "match.scoreboard.vote.vote_count",
+              String.valueOf( self.votes.count( game_mode_type ) ),
+              game_mode_type.display_name( ),
+              game_mode_type.label( ) ) );
+        }
+        
+        self.scoreboard.set_row( row_index, " " );
+        
+        self.pulse( ).model( ).players( ).forEach( self.scoreboard::show );
       }
     }.runTaskTimer( this.pulse( ).plugin( ), 0L, 20L );
   }
@@ -302,8 +368,8 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
    * or manually by an admin (if needed).
    * the beginning of the pre-game follows.
    */
-  public
-  void conclude_vote( )
+  private
+  void conclude_vote( @NotNull MiraGameModeRepository<Pulse> game_mode_repository )
   {
     this.assert_state( true, MiraMatchState.VOTE, false );
     
@@ -318,15 +384,24 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     
     MiraGameModeType winning_game_mode = this.votes( ).winning_game_mode( );
     
-    // todo: broadcast winning game mode + vote count!
-    //Bukkit.broadcastMessage(mira().message( "votes.next", game_mode( ).getGrammar( ), game_mode( ).getName( ), getCurrent_map_label( ) ) );
+    this.game_mode =
+      game_mode_repository.game_mode( this.pulse( ), this, winning_game_mode.label( ) );
     
-    // todo: initialise the game mode!
-    //this.game_mode = new Gamemode(...);
+    this.server( ).broadcastMessage( this.pulse( ).model( ).message(
+      "match.vote.broadcast.result",
+      this.game_mode.display_name( ) ) );
     
     this.begin_pre_game( );
   }
   
+  /**
+   * following conclusion of the vote, an (ideally) brief pre-game takes place.
+   * this allows the objectives relevant to the selected game mode to activate.
+   * players are also given a brief time period to observe the activation of
+   * these objectives.
+   * players are lastly given the opportunity to join the match early and be
+   * pre-assigned to a team - this is necessary for permanent death game modes.
+   */
   private
   void begin_pre_game( )
   {
@@ -339,13 +414,9 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     
     this.state = MiraMatchState.PRE_GAME;
     
-    this.scoreboard_pre_game = new MiraScoreboardModel(
-      Objects.requireNonNull( this.server( ).getScoreboardManager( ) ),
-      "pre_game",
-      scoreboard_title( ) );
-    this.scoreboard_pre_game.initialise( 4 );
-    
-    this.pulse( ).model( ).players( ).forEach( this.scoreboard_pre_game::add_spectator );
+    this.scoreboard.reset( );
+    this.scoreboard.display_name( this.scoreboard_title( ) );
+    this.scoreboard.initialise( 4 );
     
     final MiraMatchModel<Pulse> self = this;
     
@@ -370,24 +441,38 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
           return;
         }
         
-        if ( Bukkit.getOnlinePlayers( ).isEmpty( ) )
+        if ( self.server( ).getOnlinePlayers( ).isEmpty( ) )
         {
           return;
         }
         
-        self.scoreboard_pre_game.set_row( 3, "  " );
-        self.scoreboard_pre_game.set_row( 2, "     Starting in" );
-        self.scoreboard_pre_game.set_row( 1, "     %d second(s)".formatted( seconds_remaining ) );
-        self.scoreboard_pre_game.set_row( 0, " " );
-        
-        self.pulse( ).model( ).players( ).forEach( self.scoreboard_pre_game::show );
-        
-        // todo: check if decrementing after displaying the time is the correct way to do it? shouldn't display 0? or should?
         this.seconds_remaining--;
+        
+        self.scoreboard.display_name( self.pulse( ).model( ).message(
+          "match.scoreboard.game.title",
+          self.map( ).display_name( ),
+          MiraStringUtility.time_ss_to_mm_ss( seconds_remaining ) ) );
+        
+        self.scoreboard.set_row( 3, "  " );
+        self.scoreboard.set_row(
+          2,
+          self.pulse( ).model( ).message( "match.scoreboard.game.pre_game.line1" ) );
+        self.scoreboard.set_row(
+          1,
+          self.pulse( ).model( ).message( "match.scoreboard.game.pre_game.line2" ) );
+        self.scoreboard.set_row( 0, " " );
+        
+        self.pulse( ).model( ).players( ).forEach( self.scoreboard::show );
       }
     }.runTaskTimer( this.pulse( ).plugin( ), 0L, 20L );
   }
   
+  /**
+   * concludes the pre-game after its (again, ideally) brief timer expires.
+   * this allows the game itself to begin - following conclusion of the
+   * pre-game.
+   * this method is public to allow external pre-conclusions of the pre-game.
+   */
   public
   void conclude_pre_game( )
   {
@@ -398,10 +483,8 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       throw new IllegalStateException( "match pre-game is not active - cannot conclude!" );
     }
     
-    // variable can still become null in between the check above and the code below!
-    Objects.requireNonNull( this.pre_game_task_timer ).cancel( );
+    this.pre_game_task_timer.cancel( );
     this.pre_game_task_timer = null;
-    this.scoreboard_pre_game = null;
     
     this.begin_game( );
   }
@@ -409,11 +492,13 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   private
   void begin_game( )
   {
-    assert this.game_mode != null;
-    
     this.assert_state( true, MiraMatchState.PRE_GAME, false );
     
     this.state = MiraMatchState.GAME;
+    
+    this.map( ).activate( );
+    this.game_mode( ).activate( );
+    this.event_handler( new MiraMatchPlayerKilledHandler( this.pulse( ) ) );
     
     // randomly pick players out of a hat for team assignment until everyone has been evaluated.
     List<MiraPlayerModel<?>> players = new ArrayList<>( this.pulse( ).model( ).players( ) );
@@ -423,7 +508,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       MiraPlayerModel<?> player =
         players.get( this.pulse( ).model( ).rng.nextInt( players.size( ) ) );
       
-      if ( player.joined( ) && !this.try_join_team( player, null ) )
+      if ( player.joined( ) && this.try_join_team( player, null ) )
       {
         return;
       }
@@ -434,20 +519,18 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       
       players.remove( player );
     }
-    
-    this.map.activate( );
-    this.game_mode.activate( );
   }
   
   public
   void conclude_game( )
   {
-    assert this.game_mode != null;
-    
     this.assert_state( true, MiraMatchState.GAME, true );
     
-    this.game_mode.deactivate( );
-    this.map.deactivate( );
+    this.game_mode().determine_winner();
+    
+    this.game_mode( ).deactivate( );
+    this.map( ).deactivate( );
+    this.unregister_event_handlers( );
     this.concluded = true;
     
     this.begin_post_game( );
@@ -461,23 +544,12 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     // fixme: needs to be at the pvp level.
     //this.pulse( ).model( ).respawn( ).clear( );
     
-    String objective_display_name =
-      String.format( "%s (%s)", this.map.label( ), this.game_mode( ).display_name( ) );
-    
-    this.scoreboard_post_game = new MiraScoreboardModel(
-      Objects.requireNonNull( this.server( ).getScoreboardManager( ) ),
-      "post_game",
-      objective_display_name );
-    this.scoreboard_post_game.initialise( 3 );
-    this.scoreboard_post_game.set_row( 2, "  " );
-    this.scoreboard_post_game.set_row( 1, " gg !!" );
-    this.scoreboard_post_game.set_row( 0, " " );
-    
     for ( MiraPlayerModel<?> mira_player : this.pulse( ).model( ).players( ) )
     {
       Player player = mira_player.bukkit( );
       
       // the match has just ended - force respawn anyone who may have died and caused a post game.
+      // fixme: no longer using spigot ig?!
       if ( player.isDead( ) )
       {
         player.spigot( ).respawn( );
@@ -485,8 +557,8 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       
       mira_player.leaves_team( );
       
-      this.scoreboard_post_game.add_spectator( mira_player );
-      this.scoreboard_post_game.show( mira_player );
+      this.scoreboard.add_spectator( mira_player );
+      this.scoreboard.show( mira_player );
       
       player.playSound( player.getLocation( ), Sound.ENTITY_WITHER_DEATH, 1L, 1L );
       player.setGameMode( GameMode.CREATIVE );
@@ -541,6 +613,22 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
         }
         
         this.seconds_remaining--;
+        
+        self.scoreboard.display_name( self.pulse( ).model( ).message(
+          "match.scoreboard.game.title",
+          self.map( ).display_name( ),
+          MiraStringUtility.time_ss_to_mm_ss( seconds_remaining ) ) );
+        
+        self.scoreboard.set_row( 3, "  " );
+        self.scoreboard.set_row(
+          2,
+          self.pulse( ).model( ).message( "match.scoreboard.game.post_game.line1" ) );
+        self.scoreboard.set_row(
+          1,
+          self.pulse( ).model( ).message( "match.scoreboard.game.post_game.line2" ) );
+        self.scoreboard.set_row( 0, " " );
+        
+        self.pulse( ).model( ).players( ).forEach( self.scoreboard::show );
       }
     }.runTaskTimer( this.pulse( ).plugin( ), 0L, 20L );
   }
@@ -555,10 +643,8 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       throw new IllegalStateException( "match post-game is not active - cannot conclude!" );
     }
     
-    // variable can still become null in between the check above and the code below!
-    Objects.requireNonNull( this.post_game_task_timer ).cancel( );
+    this.post_game_task_timer.cancel( );
     this.post_game_task_timer = null;
-    this.scoreboard_post_game = null;
     
     this.conclude( );
   }
@@ -573,31 +659,63 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   
   /*—[match interactions]—————————————————————————————————————————————————————————————————————————*/
   
-  private @NotNull
+  /**
+   * when a player joins the match without a team preference, they should be
+   * assigned to the team with the least amount of players.
+   * if there are multiple "smallest teams" - just take the first.
+   *
+   * @return the team with the least amount of members - during this active match.
+   * @throws IllegalStateException no teams are defined.
+   */
+  @NotNull
+  private
   MiraTeamModel smallest_team( )
+  throws IllegalStateException
   {
     MiraTeamModel result = null;
-    int largest_team_size = -1;
+    int smallest_team_size = Integer.MAX_VALUE;
     
-    for ( MiraTeamModel team : this.map.teams( ) )
+    for ( MiraTeamModel team : this.map( ).teams( ) )
     {
       int team_size = team.bukkit( ).getSize( );
       
-      if ( largest_team_size == -1 || team_size > largest_team_size )
+      if ( team_size < smallest_team_size )
       {
         result = team;
-        largest_team_size = team_size;
+        smallest_team_size = team_size;
       }
     }
     
-    return Objects.requireNonNull( result );
+    if ( result == null || this.map( ).teams( ).isEmpty( ) )
+    {
+      throw new IllegalStateException( "no valid teams available to choose from?" );
+    }
+    
+    return result;
   }
   
+  /**
+   * attempts to put the given player on a team within this active match.
+   * the player is not put on a team where:
+   * <ul>
+   *   <li>permanent death is enabled and the match has already started.</li>
+   *   <li>the preferred team is full.</li>
+   *   <li>all available teams are full.</li>
+   *   <li>an external event listener cancels the join event.</li>
+   * </ul>
+   *
+   * @param mira_player    the player who is joining a team.
+   * @param preferred_team their preferred team - if any.
+   * @return true - if the player was able to successfully join a team.
+   * @throws IllegalStateException if the game mode is inactive.
+   * @throws IllegalStateException if the player is not marked as joined.
+   */
   @Override
   public
   boolean try_join_team(
     @NotNull MiraPlayerModel<?> mira_player,
     @Nullable MiraTeamModel preferred_team )
+  throws IllegalStateException
   {
     if ( !this.active )
     {
@@ -606,12 +724,12 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     
     if ( !mira_player.joined( ) )
     {
-      throw new IllegalStateException( "player joins team without being marked as joined?" );
+      throw new IllegalStateException( "player joins team while not marked as joined?" );
     }
     
     if ( this.game_mode( ).permanent_death( ) )
     {
-      mira_player.messages( "permanent death is enabled - you can no longer join!" );
+      mira_player.messages( this.pulse( ).model( ).message( "match.team.join.late" ) );
       mira_player.joined( false );
       
       return false;
@@ -624,11 +742,11 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     {
       if ( preferred_team == null )
       {
-        mira_player.messages( "all teams are full, please try joining later." );
+        mira_player.messages( this.pulse( ).model( ).message( "match.team.join.full" ) );
       }
       else
       {
-        mira_player.messages( "your preferred team is full, please try joining later." );
+        mira_player.messages( this.pulse( ).model( ).message( "match.team.preference.full" ) );
       }
       
       mira_player.joined( false );
@@ -643,27 +761,42 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     
     if ( join_team_event.isCancelled( ) )
     {
+      mira_player.joined( false );
+      
       return false;
     }
     
-    this.log( mira_player.display_name( ) + " joins " + given_team.coloured_display_name( ) );
+    this.log( "%s joins %s".formatted(
+      mira_player.display_name( ),
+      given_team.coloured_display_name( ) ) );
     
     mira_player.joins_team( given_team );
     
     MiraItemUtility.clear( mira_player );
     
-    this.map.apply_inventory( mira_player );
+    this.map( ).apply_inventory( mira_player );
     
     Player player = mira_player.bukkit( );
-    player.teleport( this.map.random_team_spawn_location( mira_player.team( ) ) );
+    player.teleport( this.map( ).random_team_spawn_location( mira_player.team( ) ) );
     player.setGameMode( GameMode.SURVIVAL );
     player.setFallDistance( 0F );
     
-    player.sendMessage( "you have joined the %s.".formatted( given_team.display_name( ) ) );
+    player.sendMessage( this.pulse( ).model( ).message(
+      "match.team.join.ok",
+      given_team.coloured_display_name( ) ) );
     
     return true;
   }
   
+  /**
+   * attempts to remove the player from their team within this *active* match.
+   * if permanent death is enabled, the player must be additionally notified
+   * that they can no longer re-join this match.
+   *
+   * @param mira_player the player who is leaving their team.
+   * @throws IllegalStateException    if the game mode is inactive.
+   * @throws IllegalArgumentException if the player is not marked as joined.
+   */
   @Override
   public
   void try_leave_team( @NotNull MiraPlayerModel<?> mira_player )
@@ -677,11 +810,6 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     if ( !mira_player.joined( ) )
     {
       throw new IllegalArgumentException( "player leaves team without being marked as joined?" );
-    }
-    
-    if ( !this.game_mode( ).permanent_death( ) )
-    {
-      mira_player.messages( "you have left the match and will not be able to re-join!" );
     }
     
     MiraTeamModel mira_team = mira_player.team( );
@@ -699,6 +827,13 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     MiraItemUtility.clear( mira_player );
     // fixme: re-add spectator kit.
     //this.pulse().master().giveSpectatorKit( mira_player );
+    
+    mira_player.messages( this.pulse( ).model( ).message( "match.team.leave.ok" ) );
+    
+    if ( this.game_mode( ).permanent_death( ) )
+    {
+      mira_player.messages( this.pulse( ).model( ).message( "match.team.leave.no_rejoin" ) );
+    }
   }
   
   private

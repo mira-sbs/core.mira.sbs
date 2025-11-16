@@ -67,7 +67,7 @@ class MiraConfigurationModel<Pulse extends MiraPulse<?, ?>>
     this.cache = new TreeMap<>( );
     
     this.file_config = YamlConfiguration.loadConfiguration( new InputStreamReader(
-      Objects.requireNonNull( this.pulse( ).plugin( ).getResource( config_resource_name ) ),
+        this.pulse( ).plugin( ).getResource( config_resource_name ) ,
       StandardCharsets.UTF_8
     ) );
     

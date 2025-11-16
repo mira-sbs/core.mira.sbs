@@ -170,7 +170,7 @@ class MiraStringUtility
     int mm = hh_modulo / 60;
     int ss = hh_modulo % 60;
     
-    return "%s:%s".formatted( two_digit_format.format( mm ), two_digit_format.format( ss ) );
+    return "%2s:%2s".formatted( two_digit_format.format( mm ), two_digit_format.format( ss ) );
   }
   
   /**

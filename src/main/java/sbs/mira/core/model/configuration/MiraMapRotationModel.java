@@ -2,17 +2,20 @@ package sbs.mira.core.model.configuration;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
-import sbs.mira.core.model.MiraConfigurationModel;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.stream.Stream;
 
 public final
 class MiraMapRotationModel<Pulse extends MiraPulse<?, ?>>
-  extends MiraConfigurationModel<Pulse>
+  extends MiraModel<Pulse>
 {
-  private static final String CONFIG_RESOURCE_FILE_NAME = "rotation.yml";
-  private static final String ROTATION_LIST_KEY = "rotation";
+  private static final String CONFIG_RESOURCE_FILE_NAME = "rotation";
   
   @NotNull
   private final List<String> rotation;
@@ -23,12 +26,25 @@ class MiraMapRotationModel<Pulse extends MiraPulse<?, ?>>
   private String set_next_map_label;
   
   public
-  MiraMapRotationModel(
-    @NotNull Pulse pulse )
+  MiraMapRotationModel( @NotNull Pulse pulse )
   {
-    super( pulse, CONFIG_RESOURCE_FILE_NAME );
+    super( pulse );
     
-    this.rotation = this.file_config.getStringList( ROTATION_LIST_KEY );
+    try (
+      Stream<String> lines = Files.lines( Paths.get(
+        pulse.plugin( ).getDataFolder( ).getAbsolutePath( ),
+        CONFIG_RESOURCE_FILE_NAME ) )
+    )
+    {
+      this.rotation = lines.toList( );
+      
+      this.log( "(^-^) successfully loaded map rotation!" );
+    }
+    catch ( IOException io_exception )
+    {
+      throw new IllegalStateException( "unable to read 'rotation' file!", io_exception );
+    }
+    
     this.rotation_index = 0;
     
     this.set_next_map = false;

@@ -12,8 +12,8 @@ import java.util.List;
 import java.util.logging.Level;
 
 /**
- * a moving cog within the mira framework.
- * slide it into place (as needed) to turn neighbouring gears.
+ * a knower and doer of things within the mira framework.
+ * has a pulse and is therefore alive.
  * created on 2017-03-20.
  *
  * @author jj stephen
@@ -54,11 +54,25 @@ class MiraModel<Pulse extends MiraPulse<?, ?>>
    * log an informational message to the jvm console via the plugin's logger.
    *
    * @param message yap to output in the console to the poor sysadmin.
+   * @param level   the logging level for this message.
    */
   public
-  void log( String message )
+  void log( @NotNull String message, @NotNull Level level )
   {
-    this.pulse.plugin( ).getLogger( ).log( Level.INFO, "[mira?] %s".formatted( message ) );
+    this.pulse.plugin( ).getLogger( ).log( level, "[mira?] %s".formatted( message ) );
+  }
+  
+  /**
+   * log an informational message to the jvm console via the plugin's logger.
+   * overloaded method that automatically provides {@code Level.INFO} as the
+   * logging level.
+   *
+   * @param message yap to output in the console to the poor sysadmin.
+   */
+  public
+  void log( @NotNull String message )
+  {
+    this.log( message, Level.INFO );
   }
   
   /**

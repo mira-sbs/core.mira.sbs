@@ -130,16 +130,20 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
     
     this.match = match;
     this.active = false;
+    
+    this.define_metadata( );
+    this.define_spawns( );
+    this.define_objectives( );
   }
   
   /*—[implementation definitions]—————————————————————————————————————————————————————————————————*/
   
   /**
-   * implementations should define all rules / limits within this procedure
+   * implementations should define all metadata / config within this procedure
    * (if applicable).
    */
   protected abstract
-  void define_rules( );
+  void define_metadata( );
   
   /**
    * implementations should define all spawn positions / regions within this

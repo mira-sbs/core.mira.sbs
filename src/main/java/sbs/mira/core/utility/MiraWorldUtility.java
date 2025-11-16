@@ -34,7 +34,7 @@ class MiraWorldUtility
 {
   private final static String WORLD_REGION_DIRECTORY_NAME = "region";
   private final static String WORLD_REGION_FILE_EXTENSION = ".mca";
-  private final static String[] WORLD_LEVEL_FILE_NAMES = { "level.dat", "uid.dat" };
+  private final static String[] WORLD_LEVEL_FILE_NAMES = { "level.dat" };
   
   /**
    * valid world data includes `.mca` and `.dat` files.
@@ -58,7 +58,7 @@ class MiraWorldUtility
     
     File region_directory = new File( world_directory_path, WORLD_REGION_DIRECTORY_NAME );
     
-    if ( !region_directory.exists( ) || !region_directory.isDirectory( ) )
+    if ( !is_world_region_directory( region_directory ) )
     {
       return false;
     }
@@ -81,19 +81,26 @@ class MiraWorldUtility
     return true;
   }
   
+  public static
+  boolean is_world_region_directory( File file )
+  {
+    return file.exists( ) &&
+           file.isDirectory( ) &&
+           file.getName( ).equals( WORLD_REGION_DIRECTORY_NAME );
+  }
+  
   /**
    * minecraft world region (`.mca`) files must be contained with a "region" directory.
    *
-   * @param world_region_file the file to be checked.
+   * @param file the file to be checked.
    * @return true - if the file is a valid minecraft world region file.
    */
   public static
-  boolean is_world_region_file( File world_region_file )
+  boolean is_world_region_file( File file )
   {
-    return world_region_file.exists( ) &&
-           world_region_file.isFile( ) &&
-           world_region_file.getName( ).endsWith( WORLD_REGION_FILE_EXTENSION ) &&
-           world_region_file.getParentFile( ).getName( ).equals( WORLD_REGION_DIRECTORY_NAME );
+    return file.exists( ) &&
+           file.isFile( ) &&
+           file.getName( ).endsWith( WORLD_REGION_FILE_EXTENSION );
   }
   
   /**
@@ -162,7 +169,10 @@ class MiraWorldUtility
       Path.of( repo_path, repo_label ),
       allow_overwrite,
       ( file->is_world_file( file ) || is_world_region_file( file ) ),
-      ( MiraWorldUtility::is_world_directory ) );
+      (
+        file->MiraWorldUtility.is_world_directory( file ) ||
+              MiraWorldUtility.is_world_region_directory( file )
+      ) );
   }
   
   /**
@@ -195,7 +205,10 @@ class MiraWorldUtility
       Path.of( Bukkit.getWorldContainer( ).getAbsolutePath( ), target_world_label ),
       false,
       ( file->is_world_file( file ) || is_world_region_file( file ) ),
-      ( MiraWorldUtility::is_world_directory ) );
+      (
+        file->MiraWorldUtility.is_world_directory( file ) ||
+              MiraWorldUtility.is_world_region_directory( file )
+      ) );
     
     return true;
   }

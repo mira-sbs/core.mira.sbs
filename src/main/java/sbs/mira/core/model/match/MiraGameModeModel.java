@@ -109,10 +109,6 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     this.player_kills = new HashMap<>( );
     this.player_deaths = new HashMap<>( );
     this.environmental_deaths = 0;
-    this.scoreboard = new MiraScoreboardModel(
-      this.server( ).getScoreboardManager( ),
-      this.label( ),
-      this.match.scoreboard_title( ) );
   }
   
   /*—[implementation definitions]—————————————————————————————————————————————————————————————————*/
@@ -145,11 +141,14 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
       throw new IllegalStateException( "game mode is already active!" );
     }
     
+    this.scoreboard =
+      new MiraScoreboardModel( this.server( ).getScoreboardManager( ), this.label( ) );
+    
     this.active = true;
     
     for ( MiraTeamModel mira_team : this.match.map( ).teams( ) )
     {
-      this.scoreboard.bukkit( mira_team );
+      this.scoreboard.register( mira_team );
       this.team_points.put( mira_team.label( ), 0 );
     }
     
@@ -199,30 +198,36 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
         assert this.game_task_timer != null;
         assert this.match.state( ) == MiraMatchState.GAME;
         
-        this.seconds_elapsed++;
+        int seconds_remaining = this.match.map( ).match_duration( ) - this.seconds_elapsed;
         
-        long seconds_remaining = this.match.map( ).match_duration( ) - this.seconds_elapsed;
+        this.scoreboard.display_name( self.pulse( ).model( ).message(
+          "match.scoreboard.game.title",
+          this.match.map( ).display_name( ),
+          MiraStringUtility.time_ss_to_mm_ss( seconds_remaining ) ) );
         
-        if ( seconds_remaining % 60 == 0 && seconds_remaining != 0 )
+        if ( seconds_remaining > 0 )
         {
-          Bukkit.broadcastMessage( "there is %d minute(s) remaining!".formatted( seconds_remaining /
-                                                                                 60 ) );
-        }
-        else if ( seconds_remaining == 30 )
-        {
-          Bukkit.broadcastMessage( "there is 30 seconds remaining!" );
-        }
-        else if ( seconds_remaining < 6 && seconds_remaining > 0 )
-        {
-          Bukkit.broadcastMessage( "there is %d second(s) remaining!".formatted( seconds_remaining ) );
+          if ( seconds_remaining % 60 == 0 )
+          {
+            this.server( ).broadcastMessage( this.pulse( ).model( ).message(
+              "match.time.minutes",
+              String.valueOf( seconds_remaining / 60 ) ) );
+          }
+          else if ( seconds_remaining == 30 || seconds_remaining <= 5 )
+          {
+            this.server( ).broadcastMessage( this.pulse( ).model( ).message(
+              "match.time.seconds",
+              String.valueOf( seconds_remaining ) ) );
+          }
         }
         
         if ( seconds_elapsed( ) >= this.match.map( ).match_duration( ) )
         {
-          deactivate( ); // the match *always* ends once the match duration has been reached.
+          // the match *always* ends once the match duration has been reached.
+          self.match.conclude_game( );
         }
-        // have a 0 `tick` delay before starting the task, and repeat every 20 ticks.
-        // a `tick` is a 20th of a second. minecraft servers run at 20 ticks per second (tps).
+        
+        this.seconds_elapsed++;
       }, 20L, 20L );
   }
   
@@ -546,7 +551,11 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
         winning_score,
         objective_quantifier );
     }
+    else
+    {
+      throw new IllegalStateException( "could not determine winner?" );
+    }
     
-    this.server( ).broadcastMessage( winner );
+    this.server( ).broadcastMessage( winner_message );
   }
 }

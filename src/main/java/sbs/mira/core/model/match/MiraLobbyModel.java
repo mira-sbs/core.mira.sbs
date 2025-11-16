@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
 import sbs.mira.core.MiraPulse;
 import sbs.mira.core.model.configuration.MiraMapRotationModel;
-import sbs.mira.core.model.map.MiraMapModel;
+import sbs.mira.core.model.map.MiraMapRepository;
 
 import java.io.IOException;
 
@@ -98,10 +98,11 @@ class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
    * the match will then take over the next steps in the lobby lifecycle.
    *
    * @throws IOException file operation failed.
-   * @see MiraMatchModel#begin()
    */
   public
-  void begin_match( )
+  void begin_match(
+    MiraMapRepository<Pulse> map_repository,
+    MiraGameModeRepository<Pulse> game_mode_repository )
   throws IOException
   {
     String next_map_label = this.map_rotation.next_map_label( );
@@ -109,16 +110,15 @@ class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
     
     this.map_rotation.advance( );
     
-    // fixme: determine map from chosen map label.
-    MiraMapModel<Pulse> map = null;
-    
-    this.match = new MiraMatchModel<>( this.pulse( ), map, was_manually_set, -1 );
-    this.match.begin( );
+    this.match = new MiraMatchModel<>( this.pulse( ), was_manually_set, -1 );
+    this.match.begin(
+      map_repository.map( this.pulse( ), this.match, next_map_label ),
+      game_mode_repository );
   }
   
   public
   void conclude_match( )
   {
-    this.match( ).conclude( );
+    this.match( ).conclude_game( );
   }
 }

@@ -1,8 +1,7 @@
 ################################################################################
-# [mira~may i reflect again?]
-# [v1.0.0-witness]
+# [mira—v1.0.1] may i reflect again?
 # global (default!) configuration file.
 ################################################################################
 mira:
   file_paths:
-    maps_repository: "/home/mira/minecraft/repo/"
+    world_repository: "/home/prj/minecraft/repo"

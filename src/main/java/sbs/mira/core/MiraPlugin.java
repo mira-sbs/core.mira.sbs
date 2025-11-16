@@ -35,7 +35,6 @@ class MiraPlugin<Pulse extends MiraPulse<?, ?>>
   @NotNull
   public
   Pulse pulse( )
-  throws MiraPulse.FlatlineException
   {
     return pulse;
   }

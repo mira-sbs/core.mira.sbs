@@ -45,7 +45,12 @@ class MiraPlayerModel<Pulse extends MiraPulse<?, ?>>
     this.player = player;
     this.joined = false;
     this.team = null;
+    
+    this.update( );
   }
+  
+  public abstract
+  void update( );
   
   /*—[getters/setters]————————————————————————————————————————————————————————————————————————————*/
   
@@ -126,9 +131,7 @@ class MiraPlayerModel<Pulse extends MiraPulse<?, ?>>
     
     this.team = new_team;
     this.team( ).bukkit( ).addEntry( this.name( ) );
-    
-    // fixme: toggle_visibilities( );
-    // fixme: changes_name( );
+    this.update( );
   }
   
   /**
@@ -147,9 +150,7 @@ class MiraPlayerModel<Pulse extends MiraPulse<?, ?>>
     this.team( ).bukkit( ).removeEntry( this.name( ) );
     this.team = null;
     this.joined = false;
-    
-    // fixme: toggle_visibilities( );
-    // fixme: changes_name( );
+    this.update( );
   }
   
   /*—[bukkit shorthand + helper methods]——————————————————————————————————————————————————————————*/
@@ -181,7 +182,7 @@ class MiraPlayerModel<Pulse extends MiraPulse<?, ?>>
   public
   String name( )
   {
-    return player.getName( );
+    return this.player.getName( );
   }
   
   /**
@@ -192,7 +193,7 @@ class MiraPlayerModel<Pulse extends MiraPulse<?, ?>>
   public
   String display_name( )
   {
-    return player.getDisplayName( );
+    return this.player.getDisplayName( );
   }
   
   /**

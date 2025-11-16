@@ -5,25 +5,34 @@ import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.model.MiraPluginDataModel;
 
 /**
- * miral pulse - representation of a one-way spanning tree with two branches:
- * i. reference to the bukkit plugin model (Plugin).
- * ii. reference to the core data model (Model).
+ * miral pulse - representation of a one-way series of linked nodes with the
+ * first two layers available to entities that carry this pulse.
+ * layer i. reference to the bukkit / spigot plugin model.
+ * layer ii. reference to the core data model (via the plugin).
+ * recursive pulse requires the revisitation to begin at the upper layers -
+ * implementations may provide further shortcuts down the tunnel.
  * created on 2017-03-20.
  *
  * @author jj stephen
  * @author jd rose
  * @version 1.0.1
- * @see MiraPlugin
  * @since 1.0.1
  */
 public
-class MiraPulse<Plugin extends MiraPlugin<?>, Model extends MiraPluginDataModel<?, ?>>
+class MiraPulse<Plugin extends MiraPlugin<?>, DataModel extends MiraPluginDataModel<?, ?>>
 {
   @Nullable
   protected Plugin plugin;
   @Nullable
-  protected Model model;
+  protected DataModel model;
   
+  /**
+   * to solve circular reference between the plugin and its data model, they
+   * must both first exist separately as a plugin-owns-model composition-based
+   * relationship.
+   * a subsequent call to {@code revive(...)} must follow for carriers relying
+   * on this pulse.
+   */
   public
   MiraPulse( )
   {
@@ -31,46 +40,49 @@ class MiraPulse<Plugin extends MiraPlugin<?>, Model extends MiraPluginDataModel<
     this.model = null;
   }
   
+  /**
+   * initialises the breath giving structure and direction to the carriers of
+   * this pulse.
+   *
+   * @param plugin miral plugin - acts as the root node.
+   * @param model  core miral data model - owned by the plugin, reference kept here for convenience.
+   */
   public
-  MiraPulse( @NotNull Plugin plugin, @NotNull Model model )
-  {
-    this.breathe( plugin, model );
-  }
-  
-  public
-  void breathe( @NotNull Plugin plugin, @NotNull Model model )
+  void revive( @NotNull Plugin plugin, @NotNull DataModel model )
   {
     this.plugin = plugin;
     this.model = model;
     this.model.initialise( );
   }
   
+  /**
+   * @return reference to the specified miral plugin - root node.
+   */
   @NotNull
   public
   Plugin plugin( )
   {
-    if ( plugin != null )
+    if ( this.plugin == null )
     {
-      return plugin;
+      throw new NullPointerException( "did you forget to call revive(...)?" );
     }
-    else
-    {
-      throw new FlatlineException( "not yet breathing." );
-    }
+    
+    return this.plugin;
   }
   
+  /**
+   * @return reference to the specified miral model - linked to the root node.
+   */
   @NotNull
   public
-  Model model( )
+  DataModel model( )
   {
-    if ( model != null )
+    if ( this.model == null )
     {
-      return model;
+      throw new NullPointerException( "did you forget to call revive(...)?" );
     }
-    else
-    {
-      throw new FlatlineException( "not yet breathing." );
-    }
+    
+    return this.model;
   }
   
   /**
@@ -82,19 +94,5 @@ class MiraPulse<Plugin extends MiraPlugin<?>, Model extends MiraPluginDataModel<
   void log( @NotNull String message )
   {
     this.model( ).log( message );
-  }
-  
-  /**
-   * just set the pulse brah?
-   */
-  public static
-  class FlatlineException
-    extends RuntimeException
-  {
-    public
-    FlatlineException( String reason )
-    {
-      super( reason );
-    }
   }
 }

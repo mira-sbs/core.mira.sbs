@@ -83,7 +83,7 @@ class MiraFileUtility
     
     if ( source.isDirectory( ) )
     {
-      if ( valid_directory_predicate != null && valid_directory_predicate.test( source ) )
+      if ( valid_directory_predicate != null && !valid_directory_predicate.test( source ) )
       {
         return;
       }
@@ -95,7 +95,7 @@ class MiraFileUtility
       
       for ( String source_child_file_name : Objects.requireNonNull( source.list( ) ) )
       {
-        copies(
+        MiraFileUtility.copies(
           source_path.resolve( source_child_file_name ),
           target_path.resolve( source_child_file_name ),
           allow_overwrite,
@@ -106,7 +106,7 @@ class MiraFileUtility
     }
     else
     {
-      if ( valid_file_predicate != null && valid_file_predicate.test( source ) )
+      if ( valid_file_predicate != null && !valid_file_predicate.test( source ) )
       {
         return;
       }

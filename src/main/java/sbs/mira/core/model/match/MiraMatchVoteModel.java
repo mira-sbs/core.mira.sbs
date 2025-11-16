@@ -1,6 +1,5 @@
 package sbs.mira.core.model.match;
 
-import org.bukkit.ChatColor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
@@ -62,7 +61,7 @@ class MiraMatchVoteModel<Pulse extends MiraPulse<?, ?>>
   {
     if ( !this.is_vote_allowed_for( game_mode_type ) )
     {
-      mira_player.messages( ChatColor.RED + "this game mode is not supported on this map." );
+      mira_player.messages( this.pulse( ).model( ).message( "match.vote.no_support" ) );
       
       return;
     }
@@ -71,7 +70,7 @@ class MiraMatchVoteModel<Pulse extends MiraPulse<?, ?>>
     {
       if ( this.rigged )
       {
-        mira_player.messages( ChatColor.RED + "the vote has already been rigged!" );
+        mira_player.messages( this.pulse( ).model( ).message( "match.vote.already_rigged" ) );
         
         return;
       }
@@ -79,27 +78,27 @@ class MiraMatchVoteModel<Pulse extends MiraPulse<?, ?>>
       this.rigged = true;
       this.rigged_game_mode = game_mode_type;
       
-      mira_player.messages( ChatColor.LIGHT_PURPLE + "you have rigged this vote..!" );
+      mira_player.messages( this.pulse( ).model( ).message( "match.vote.ok_rigged" ) );
       
-      this.server( ).broadcastMessage( ChatColor.LIGHT_PURPLE + "the vote has been rigged..!" );
+      this.server( ).broadcastMessage( this.pulse( ).model( ).message(
+        "match.vote.broadcast.ok_rigged" ) );
     }
     else
     {
       if ( this.has_voted( mira_player ) )
       {
-        mira_player.messages( ChatColor.RED + "you have already voted!" );
+        mira_player.messages( this.pulse( ).model( ).message( "match.vote.already_voted" ) );
         
         return;
       }
       
       this.votes.put( mira_player.uuid( ), game_mode_type );
       
-      mira_player.messages( ChatColor.LIGHT_PURPLE + "you have cast your vote." );
+      mira_player.messages( this.pulse( ).model( ).message( "match.vote.ok" ) );
       
-      this.server( ).broadcastMessage( String.format(
-        "%s voted for the game mode %s!",
-        mira_player.name( ),
-        game_mode_type.display_name( ) ) );
+      this.server( ).broadcastMessage( this.pulse( ).model( ).message(
+        "match.vote.broadcast.ok",
+        mira_player.display_name( ), game_mode_type.display_name( ) ) );
     }
   }
   

@@ -1,6 +1,5 @@
 package sbs.mira.core.model;
 
-import org.bukkit.craftbukkit.v1_21_R6.entity.CraftPlayer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
@@ -19,7 +18,7 @@ import java.util.*;
  * @since 1.0.0
  */
 public abstract
-class MiraPluginDataModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayerModel<?>>
+class MiraPluginDataModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlayerModel<Pulse>>
   extends MiraModel<Pulse>
 {
   @NotNull
@@ -51,17 +50,29 @@ class MiraPluginDataModel<Pulse extends MiraPulse<?, ?>, Player extends MiraPlay
       this.pulse( ).plugin( ).getConfig( ) );
     this.core_messages = new MiraConfigurationModel<>( this.pulse( ), "core_messages.yml" );
     
-    this.maps_repository_path = this.core_config.get( "mira.file_paths.maps_repository_path" );
+    this.maps_repository_path = this.core_config.get( "mira.file_paths.world_repository" );
   }
   
-  @NotNull
-  public abstract
-  MiraPlayerModel<?> declares( @NotNull CraftPlayer target );
+  public
+  void add_player( @NotNull Player mira_player )
+  {
+    if ( this.players.containsKey( mira_player.uuid( ) ) )
+    {
+      throw new IllegalArgumentException( "player already declared?" );
+    }
+    
+    this.players.put( mira_player.uuid( ), mira_player );
+  }
   
   public
-  void destroys( @NotNull UUID victim )
+  void remove_player( @NotNull UUID victim )
   {
-    players.remove( victim );
+    if ( !this.players.containsKey( victim ) )
+    {
+      throw new IllegalArgumentException( "player already un-declared?" );
+    }
+    
+    this.players.remove( victim );
   }
   
   @NotNull
