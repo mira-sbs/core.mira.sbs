@@ -1,5 +1,6 @@
 package sbs.mira.core.model.match;
 
+import org.bukkit.Bukkit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sbs.mira.core.MiraModel;
@@ -28,16 +29,26 @@ class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
 {
   @NotNull
   private final MiraMapRotationModel<Pulse> map_rotation;
+  @NotNull
+  private final MiraMapRepository<Pulse> map_repository;
+  @NotNull
+  private final MiraGameModeRepository<Pulse> game_mode_repository;
+  
   @Nullable
   private MiraMatchModel<Pulse> match;
   @Nullable
-  private final MiraMatchModel<Pulse> previous_match;
+  private MiraMatchModel<Pulse> previous_match;
   
   public
-  MiraLobbyModel( @NotNull Pulse pulse )
+  MiraLobbyModel(
+    @NotNull Pulse pulse,
+    @NotNull MiraMapRepository<Pulse> map_repository,
+    @NotNull MiraGameModeRepository<Pulse> game_mode_repository )
   {
     super( pulse );
     
+    this.map_repository = map_repository;
+    this.game_mode_repository = game_mode_repository;
     this.map_rotation = new MiraMapRotationModel<>( pulse );
     this.match = null;
     this.previous_match = null;
@@ -63,33 +74,13 @@ class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
   public
   MiraMatchModel<Pulse> match( )
   {
-    assert this.match != null;
+    if ( this.match == null )
+    {
+      throw new IllegalStateException( "match does not exist?" );
+    }
     
     return this.match;
   }
-  
-  /*—[validation/guard evaluations]———————————————————————————————————————————*/
-  
-  /**
-   * players are allowed to interact with the map or game mode if they are on
-   * a team - or if admin bypass is toggled and permission is granted.
-   *
-   * @param entity_uuid        the uuid of the entity (ideally a player) interacting with the world.
-   * @param allow_admin_bypass true - if players with the `mira.administrator.bypass` permission can bypass this check always.
-   * @return true - if the player is currently allowed to interact with the world.
-   */
-  /*public
-  boolean can_interact( @NotNull UUID entity_uuid, boolean allow_admin_bypass )
-  {
-    MiraVersePlayer player = this.pulse( ).model( ).player( entity_uuid );
-    
-    return player == null || (
-      player.has_team( ) ||
-      allow_admin_bypass && player.crafter( ).hasPermission( "mira.administrator.bypass" )
-    );
-  }*/
-  
-  /*—[lobby lifecycle steps]——————————————————————————————————————————————————*/
   
   /**
    * event handler.
@@ -100,25 +91,45 @@ class MiraLobbyModel<Pulse extends MiraPulse<?, ?>>
    * @throws IOException file operation failed.
    */
   public
-  void begin_match(
-    MiraMapRepository<Pulse> map_repository,
-    MiraGameModeRepository<Pulse> game_mode_repository )
+  void begin_match( )
   throws IOException
   {
+    if ( this.match != null )
+    {
+      throw new IllegalStateException( "match already exists?" );
+    }
+    
     String next_map_label = this.map_rotation.next_map_label( );
     boolean was_manually_set = this.map_rotation.set_next_map( );
     
-    this.map_rotation.advance( );
-    
-    this.match = new MiraMatchModel<>( this.pulse( ), was_manually_set, -1 );
-    this.match.begin(
-      map_repository.map( this.pulse( ), this.match, next_map_label ),
-      game_mode_repository );
+    this.match = new MiraMatchModel<>( this.pulse( ), this, was_manually_set, -1 );
+    this.match.activate(
+      this.map_repository.map( this.pulse( ), this.match, next_map_label ),
+      this.game_mode_repository );
+  }
+  
+  public
+  void conclude_game( )
+  {
+    this.match( ).conclude_game( );
   }
   
   public
   void conclude_match( )
   {
-    this.match( ).conclude_game( );
+    this.previous_match = this.match( );
+    this.match = null;
+    
+    try
+    {
+      this.map_rotation.advance( );
+      this.begin_match( );
+    }
+    catch ( IOException e )
+    {
+      Bukkit.broadcastMessage( "wtf???" );
+    }
+    
+    this.previous_match.deactivate( );
   }
 }

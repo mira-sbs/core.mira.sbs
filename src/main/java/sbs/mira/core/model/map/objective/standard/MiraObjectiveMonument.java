@@ -76,7 +76,7 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   public
   void activate( @NotNull World world )
   {
-    if ( active )
+    if ( this.active )
     {
       throw new IllegalStateException( "build monument objective already active?" );
     }

@@ -13,7 +13,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TreeMap;
 
 /**
@@ -67,7 +66,7 @@ class MiraConfigurationModel<Pulse extends MiraPulse<?, ?>>
     this.cache = new TreeMap<>( );
     
     this.file_config = YamlConfiguration.loadConfiguration( new InputStreamReader(
-        this.pulse( ).plugin( ).getResource( config_resource_name ) ,
+      this.pulse( ).plugin( ).getResource( config_resource_name ),
       StandardCharsets.UTF_8
     ) );
     
@@ -96,5 +95,18 @@ class MiraConfigurationModel<Pulse extends MiraPulse<?, ?>>
     }
     
     return ChatColor.translateAlternateColorCodes( '&', cache.get( key ) );
+  }
+  
+  public
+  int get_number( @NotNull String key )
+  {
+    String value = this.get( key );
+    
+    if ( value == null )
+    {
+      throw new IllegalArgumentException( "cannot find value for key '%s'".formatted( key ) );
+    }
+    
+    return Integer.parseInt( value );
   }
 }

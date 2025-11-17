@@ -1,6 +1,7 @@
 package sbs.mira.core.event.handler;
 
 import org.bukkit.entity.Hanging;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.hanging.HangingBreakEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -32,6 +33,7 @@ class MiraHangingBreakGuard<Pulse extends MiraPulse<?, ?>>
   }
   
   @Override
+  @EventHandler
   public
   void handle_event( HangingBreakEvent event )
   {

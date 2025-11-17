@@ -2,6 +2,7 @@ package sbs.mira.core.event.handler;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.jetbrains.annotations.NotNull;
 import sbs.mira.core.MiraPulse;
@@ -22,6 +23,7 @@ class MiraPlateauBuildingGuard<Pulse extends MiraPulse<?, ?>>
   }
   
   @Override
+  @EventHandler
   public
   void handle_event( BlockPlaceEvent event )
   {

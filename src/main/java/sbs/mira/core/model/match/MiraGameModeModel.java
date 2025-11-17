@@ -4,9 +4,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Sound;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -18,6 +18,7 @@ import sbs.mira.core.event.match.MiraMatchPlayerLeaveTeamEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerRespawnEvent;
 import sbs.mira.core.model.MiraEventHandlerModel;
 import sbs.mira.core.model.MiraPlayerModel;
+import sbs.mira.core.model.MiraRespawnModel;
 import sbs.mira.core.model.MiraScoreboardModel;
 import sbs.mira.core.model.map.MiraTeamModel;
 import sbs.mira.core.model.utility.Position;
@@ -82,8 +83,11 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
   private final Map<UUID, Integer> player_deaths;
   private final int environmental_deaths;
   
-  @NotNull
+  @Nullable
   protected MiraScoreboardModel scoreboard;
+  
+  @NotNull
+  private final MiraRespawnModel respawn;
   
   protected boolean active;
   protected boolean permanent_death;
@@ -109,6 +113,7 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     this.player_kills = new HashMap<>( );
     this.player_deaths = new HashMap<>( );
     this.environmental_deaths = 0;
+    this.respawn = new MiraRespawnModel( this.pulse( ), match, !this.permanent_death );
   }
   
   /*—[implementation definitions]—————————————————————————————————————————————————————————————————*/
@@ -159,6 +164,43 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     
     final MiraGameModeModel<Pulse> self = this;
     
+    this.event_handler( new MiraEventHandlerModel<MiraMatchPlayerJoinTeamEvent, MiraPulse<?, ?>>(
+      this.pulse( ) )
+    {
+      @EventHandler (priority = EventPriority.LOWEST)
+      public
+      void handle_event( MiraMatchPlayerJoinTeamEvent event )
+      {
+        if ( event.isCancelled( ) )
+        {
+          return;
+        }
+        
+        MiraPlayerModel<?> mira_player = event.player( );
+        
+        // killstreak always resets upon rejoining.
+        self.player_killstreaks.put( mira_player.uuid( ), 0 );
+        
+        self.player_kills.putIfAbsent( mira_player.uuid( ), 0 );
+        self.player_deaths.putIfAbsent( mira_player.uuid( ), 0 );
+        
+        self.scoreboard.remove_spectator( mira_player );
+      }
+    } );
+    
+    this.event_handler( new MiraEventHandlerModel<MiraMatchPlayerLeaveTeamEvent, MiraPulse<?, ?>>(
+      this.pulse( ) )
+    {
+      @EventHandler (priority = EventPriority.LOWEST)
+      public
+      void handle_event( MiraMatchPlayerLeaveTeamEvent event )
+      {
+        self.player_killstreaks.put( event.player( ).uuid( ), 0 );
+        
+        self.scoreboard.add_spectator( event.player( ) );
+      }
+    } );
+    
     this.event_handler( new MiraEventHandlerModel<MiraMatchPlayerDeathEvent, MiraPulse<?, ?>>( this.pulse( ) )
     {
       @EventHandler (priority = EventPriority.LOWEST)
@@ -166,7 +208,6 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
       void handle_event( MiraMatchPlayerDeathEvent event )
       {
         MiraPlayerModel<?> mira_killed = event.killed( );
-        MiraPlayerModel<?> mira_killer = event.killed( );
         
         self.player_deaths.put(
           mira_killed.uuid( ),
@@ -175,11 +216,13 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
         
         if ( event.has_killer( ) )
         {
+          MiraPlayerModel<?> mira_killer = event.killer( );
+          
           self.player_kills.put(
             mira_killer.uuid( ),
             self.player_kills.get( mira_killer.uuid( ) ) + 1 );
           
-          int player_killer_killstreak = self.player_deaths.get( mira_killer.uuid( ) );
+          int player_killer_killstreak = self.player_killstreaks.get( mira_killer.uuid( ) );
           
           self.player_killstreaks.put( mira_killer.uuid( ), player_killer_killstreak + 1 );
           
@@ -192,11 +235,36 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
       }
     } );
     
+    this.event_handler( new MiraEventHandlerModel<MiraMatchPlayerRespawnEvent, MiraPulse<?, ?>>(
+      this.pulse( ) )
+    {
+      @Override
+      @EventHandler
+      public
+      void handle_event( MiraMatchPlayerRespawnEvent event )
+      {
+        MiraPlayerModel<?> mira_player = event.player( );
+        
+        Player player = event.player( ).bukkit( );
+        player.teleport( self.match.map( ).random_team_spawn_location( mira_player.team( ) ) );
+        player.setGameMode( GameMode.SURVIVAL );
+        
+        self.match.map( ).apply_inventory( mira_player );
+      }
+    } );
+    
     this.game_task_timer = Bukkit.getScheduler( ).runTaskTimer(
       this.pulse( ).plugin( ), ( )->
       {
-        assert this.game_task_timer != null;
-        assert this.match.state( ) == MiraMatchState.GAME;
+        if ( this.game_task_timer == null )
+        {
+          throw new IllegalStateException( "game task timer has been cleared?" );
+        }
+        
+        if ( this.match.state( ) != MiraMatchState.GAME )
+        {
+          throw new IllegalStateException( "match is no longer in game?" );
+        }
         
         int seconds_remaining = this.match.map( ).match_duration( ) - this.seconds_elapsed;
         
@@ -225,9 +293,13 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
         {
           // the match *always* ends once the match duration has been reached.
           self.match.conclude_game( );
+          return;
         }
         
+        self.pulse( ).model( ).players( ).forEach( self.scoreboard::show );
+        
         this.seconds_elapsed++;
+        
       }, 20L, 20L );
   }
   
@@ -244,6 +316,8 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     
     this.game_task_timer.cancel( );
     this.game_task_timer = null;
+    
+    this.respawn.deactivate( );
     
     //publishes_statistics( );
   }
@@ -454,67 +528,6 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     return this.player_deaths.get( uuid );
   }
   
-  /*—[event handlers]—————————————————————————————————————————————————————————————————————————————*/
-  
-  @EventHandler
-  public
-  void handle_player_respawn( PlayerRespawnEvent event )
-  {
-    MiraPlayerModel<?> mira_player =
-      this.pulse( ).model( ).player( event.getPlayer( ).getUniqueId( ) );
-    
-    event.setRespawnLocation( this.match.map( ).random_team_spawn_location( mira_player.team( ) ) );
-    
-    this.match.map( ).apply_inventory( mira_player );
-    mira_player.bukkit( ).setGameMode( GameMode.SURVIVAL );
-  }
-  
-  @EventHandler
-  public
-  void handle_match_player_respawn( MiraMatchPlayerRespawnEvent event )
-  {
-    MiraPlayerModel<?> mira_player = event.player( );
-    
-    if ( !mira_player.has_team( ) )
-    {
-      return;
-    }
-    
-    this.match.map( ).apply_inventory( mira_player );
-    mira_player.bukkit( ).setGameMode( GameMode.SURVIVAL );
-  }
-  
-  /*—[team assignment handlers]———————————————————————————————————————————————*/
-  
-  @EventHandler
-  public
-  void handle_join_team( MiraMatchPlayerJoinTeamEvent event )
-  {
-    if ( event.isCancelled( ) )
-    {
-      return;
-    }
-    
-    MiraPlayerModel<?> mira_player = event.player( );
-    
-    this.player_killstreaks.put( mira_player.uuid( ), 0 );
-    this.player_kills.putIfAbsent( mira_player.uuid( ), 0 );
-    this.player_deaths.putIfAbsent( mira_player.uuid( ), 0 );
-    
-    this.scoreboard.remove_spectator( mira_player );
-  }
-  
-  @EventHandler (priority = EventPriority.HIGHEST)
-  public
-  void handle_leave_team( MiraMatchPlayerLeaveTeamEvent event )
-  {
-    MiraPlayerModel<?> mira_player = event.player( );
-    
-    this.player_killstreaks.put( mira_player.uuid( ), 0 );
-    
-    this.scoreboard.add_spectator( mira_player );
-  }
-  
   /**
    * Broadcasts a winner after calculation.
    *
@@ -528,34 +541,33 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     @NotNull String objective_quantifier,
     int winning_score )
   {
-    String winner_message;
+    String winners_message;
     
     if ( winners.size( ) > 1 )
     {
-      String multi_winner_message_format = "it's a %d-way tie!\n%s tied with %s %s!";
+      this.server( ).broadcastMessage( this.pulse( ).model( ).message(
+        "match.result.tie.conclusion",
+        String.valueOf( winners.size( ) ) ) );
       
-      winner_message = multi_winner_message_format.formatted(
-        winners.size( ),
+      winners_message = this.pulse( ).model( ).message(
+        "match.result.tie.winners",
         MiraStringUtility.verbal_list( winners ),
-        winning_score,
-        objective_quantifier );
+        String.valueOf( winning_score ) );
     }
     else if ( winners.size( ) == 1 )
     {
-      MiraTeamModel team_winner = winners.get( 0 );
-      String single_winner_message_format = "%s %s with %s %s!";
+      this.server( ).broadcastMessage( this.pulse( ).model( ).message( "match.result.conclusion" ) );
       
-      winner_message = single_winner_message_format.formatted(
-        team_winner.coloured_display_name( ),
-        team_winner.label( ).endsWith( "s" ) ? " are the winners" : " is the winner",
-        winning_score,
-        objective_quantifier );
+      winners_message = this.pulse( ).model( ).message(
+        "match.result.winner",
+        winners.get( 0 ).coloured_display_name( ),
+        String.valueOf( winning_score ) );
     }
     else
     {
       throw new IllegalStateException( "could not determine winner?" );
     }
     
-    this.server( ).broadcastMessage( winner_message );
+    this.server( ).broadcastMessage( winners_message );
   }
 }

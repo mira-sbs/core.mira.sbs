@@ -1,6 +1,7 @@
 package sbs.mira.core.event.handler;
 
 import org.bukkit.damage.DamageSource;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.jetbrains.annotations.NotNull;
 import sbs.mira.core.MiraPulse;
@@ -26,6 +27,7 @@ class MiraEntityDamageSourceGuard<Pulse extends MiraPulse<?, ?>>
   }
   
   @Override
+  @EventHandler
   public
   void handle_event( EntityDamageEvent event )
   {

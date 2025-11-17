@@ -40,7 +40,6 @@ class MiraEventHandlerModel<Event extends org.bukkit.event.Event, Pulse extends 
    *
    * @param event the event to be handled in implementation.
    */
-  @EventHandler
   public abstract
   void handle_event( Event event );
 }

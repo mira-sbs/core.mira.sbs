@@ -115,6 +115,6 @@ class MiraMapRotationModel<Pulse extends MiraPulse<?, ?>>
       return this.set_next_map_label;
     }
     
-    return this.rotation.get( this.rotation_index++ );
+    return this.rotation.get( this.rotation_index );
   }
 }

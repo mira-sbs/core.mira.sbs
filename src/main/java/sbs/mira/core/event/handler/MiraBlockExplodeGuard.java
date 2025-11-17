@@ -1,6 +1,7 @@
 package sbs.mira.core.event.handler;
 
 import org.bukkit.block.Block;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -34,6 +35,7 @@ class MiraBlockExplodeGuard<Pulse extends MiraPulse<?, ?>>
   }
   
   @Override
+  @EventHandler
   public
   void handle_event( EntityExplodeEvent event )
   {

@@ -1,9 +1,11 @@
 package sbs.mira.core.model.match;
 
+import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
@@ -14,7 +16,10 @@ import sbs.mira.core.MiraPulse;
 import sbs.mira.core.event.match.MiraMatchPlayerDeathEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerJoinTeamEvent;
 import sbs.mira.core.event.match.MiraMatchPlayerLeaveTeamEvent;
-import sbs.mira.core.model.*;
+import sbs.mira.core.model.MiraConfigurationModel;
+import sbs.mira.core.model.MiraEventHandlerModel;
+import sbs.mira.core.model.MiraPlayerModel;
+import sbs.mira.core.model.MiraScoreboardModel;
 import sbs.mira.core.model.map.MiraMapModel;
 import sbs.mira.core.model.map.MiraTeamModel;
 import sbs.mira.core.utility.MiraEntityUtility;
@@ -23,7 +28,6 @@ import sbs.mira.core.utility.MiraStringUtility;
 import sbs.mira.core.utility.MiraWorldUtility;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -52,6 +56,9 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   extends MiraModel<Pulse>
   implements MiraMatch
 {
+  @NotNull
+  private final MiraLobby<Pulse> lobby;
+  
   private final int vote_duration;
   private final int pre_game_duration;
   private final int post_game_duration;
@@ -81,22 +88,22 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   @NotNull
   private final MiraScoreboardModel scoreboard;
   
-  @Nullable
-  private MiraRespawnModel respawn;
-  
   public
   MiraMatchModel(
     @NotNull Pulse pulse,
+    @NotNull MiraLobby<Pulse> lobby,
     boolean was_manually_set,
     long previous_world_id )
   {
     super( pulse );
     
+    this.lobby = lobby;
+    
     MiraConfigurationModel<?> config = this.pulse( ).model( ).config( );
     
-    this.vote_duration = Integer.parseInt( config.get( "settings.duration.vote" ) );
-    this.pre_game_duration = Integer.parseInt( config.get( "settings.duration.pre_game" ) );
-    this.post_game_duration = Integer.parseInt( config.get( "settings.duration.post_game" ) );
+    this.vote_duration = config.get_number( "settings.duration.vote" );
+    this.pre_game_duration = config.get_number( "settings.duration.pre_game" );
+    this.post_game_duration = config.get_number( "settings.duration.post_game" );
     
     this.map = null;
     this.was_manually_set = was_manually_set;
@@ -244,7 +251,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
    * @throws IOException file operation failed.
    */
   public
-  void begin(
+  void activate(
     @NotNull MiraMapModel<Pulse> map,
     @NotNull MiraGameModeRepository<Pulse> game_mode_repository )
   throws IOException
@@ -266,6 +273,8 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       String.valueOf( world_id( ) ) );
     MiraWorldUtility.loads( String.valueOf( world_id ), true );
     
+    this.map( ).activate( );
+    
     for ( MiraPlayerModel<?> player : this.pulse( ).model( ).players( ) )
     {
       player.update( );
@@ -286,7 +295,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   private
   void begin_vote( @NotNull MiraGameModeRepository<Pulse> game_mode_repository )
   {
-    this.assert_state( true, MiraMatchState.START, false );
+    this.assert_state( true, MiraMatchState.START, true );
     
     if ( this.vote_task_timer != null )
     {
@@ -371,7 +380,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   private
   void conclude_vote( @NotNull MiraGameModeRepository<Pulse> game_mode_repository )
   {
-    this.assert_state( true, MiraMatchState.VOTE, false );
+    this.assert_state( true, MiraMatchState.VOTE, true );
     
     if ( this.vote_task_timer == null )
     {
@@ -405,7 +414,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   private
   void begin_pre_game( )
   {
-    this.assert_state( true, MiraMatchState.VOTE, false );
+    this.assert_state( true, MiraMatchState.VOTE, true );
     
     if ( this.pre_game_task_timer != null )
     {
@@ -422,7 +431,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     
     this.pre_game_task_timer = new BukkitRunnable( )
     {
-      int seconds_remaining = pre_game_duration;
+      int seconds_remaining = pre_game_duration + 1;
       
       public
       void run( )
@@ -476,7 +485,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   public
   void conclude_pre_game( )
   {
-    this.assert_state( true, MiraMatchState.PRE_GAME, false );
+    this.assert_state( true, MiraMatchState.PRE_GAME, true );
     
     if ( this.pre_game_task_timer == null )
     {
@@ -492,33 +501,24 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   private
   void begin_game( )
   {
-    this.assert_state( true, MiraMatchState.PRE_GAME, false );
+    this.assert_state( true, MiraMatchState.PRE_GAME, true );
     
     this.state = MiraMatchState.GAME;
     
-    this.map( ).activate( );
     this.game_mode( ).activate( );
     this.event_handler( new MiraMatchPlayerKilledHandler( this.pulse( ) ) );
     
-    // randomly pick players out of a hat for team assignment until everyone has been evaluated.
-    List<MiraPlayerModel<?>> players = new ArrayList<>( this.pulse( ).model( ).players( ) );
-    
-    while ( !players.isEmpty( ) )
+    this.pulse( ).model( ).players( ).forEach( ( mira_player )->
     {
-      MiraPlayerModel<?> player =
-        players.get( this.pulse( ).model( ).rng.nextInt( players.size( ) ) );
-      
-      if ( player.joined( ) && this.try_join_team( player, null ) )
+      if ( mira_player.joined( ) && this.try_join_team( mira_player, null ) )
       {
         return;
       }
       
       // the player did not join before the match started - or they failed to join a team.
-      player.bukkit( ).setGameMode( GameMode.CREATIVE );
+      mira_player.bukkit( ).setGameMode( GameMode.CREATIVE );
       // fixme: this.pulse( ).master( ).giveSpectatorKit( player );
-      
-      players.remove( player );
-    }
+    } );
   }
   
   public
@@ -526,12 +526,11 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   {
     this.assert_state( true, MiraMatchState.GAME, true );
     
-    this.game_mode().determine_winner();
+    this.game_mode( ).determine_winner( );
     
     this.game_mode( ).deactivate( );
     this.map( ).deactivate( );
     this.unregister_event_handlers( );
-    this.concluded = true;
     
     this.begin_post_game( );
   }
@@ -546,16 +545,11 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     
     for ( MiraPlayerModel<?> mira_player : this.pulse( ).model( ).players( ) )
     {
-      Player player = mira_player.bukkit( );
-      
-      // the match has just ended - force respawn anyone who may have died and caused a post game.
-      // fixme: no longer using spigot ig?!
-      if ( player.isDead( ) )
+      if ( mira_player.has_team( ) )
       {
-        player.spigot( ).respawn( );
+        mira_player.leaves_team( );
       }
-      
-      mira_player.leaves_team( );
+      Player player = mira_player.bukkit( );
       
       this.scoreboard.add_spectator( mira_player );
       this.scoreboard.show( mira_player );
@@ -569,10 +563,15 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     this.server( ).getScheduler( ).runTaskLater(
       this.pulse( ).plugin( ), ( )->
       {
-        for ( MiraPlayerModel<?> player : this.pulse( ).model( ).players( ) )
+        // the match has just ended - force respawn anyone who may have died and caused a post game.
+        for ( MiraPlayerModel<?> mira_player : this.pulse( ).model( ).players( ) )
         {
-          // todo: give spectator kit - make it a common method?
-          //mira( ).giveSpectatorKit( pl );
+          Player player = mira_player.bukkit( );
+          
+          if ( player.isDead( ) )
+          {
+            player.spigot( ).respawn( );
+          }
         }
       }, 1L );
     
@@ -646,15 +645,32 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
     this.post_game_task_timer.cancel( );
     this.post_game_task_timer = null;
     
-    this.conclude( );
+    this.lobby.conclude_match( );
   }
   
   public
-  void conclude( )
+  void deactivate( )
   {
     this.assert_state( true, MiraMatchState.POST_GAME, false );
     
     this.state = MiraMatchState.END;
+    this.active = false;
+    this.concluded = true;
+    
+    String world_name = this.world( ).getName( );
+    
+    try
+    {
+      MiraWorldUtility.discards( world_name );
+      
+      this.pulse( ).log( "(^-^)7 concluded match world '%s' deleted. bai!".formatted( world_name ) );
+    }
+    catch ( IOException ignored )
+    {
+      this.pulse( ).log(
+        "concluded match world '%s' could not be discarded and must be deleted manually.".formatted(
+          world_name ) );
+    }
   }
   
   /*—[match interactions]—————————————————————————————————————————————————————————————————————————*/
@@ -846,6 +862,7 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
       super( pulse );
     }
     
+    @EventHandler
     @Override
     public
     void handle_event( PlayerDeathEvent event )
@@ -860,31 +877,30 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
         null :
         this.pulse( ).model( ).player( player_killer.getUniqueId( ) );
       
-      @Nullable String death_message = event.getDeathMessage( );
       
       if ( mira_killed.equals( mira_killer ) )
       {
         mira_killer = null;
       }
       
-      if ( death_message == null )
+      if ( event.getDeathMessage( ) != null )
       {
-        if ( mira_killer == null )
+        String death_message = event.getDeathMessage( );
+        death_message = death_message.replace(
+          mira_killed.name( ),
+          mira_killed.display_name( ) + ChatColor.YELLOW );
+        
+        if ( mira_killer != null )
         {
-          death_message = "%s died".formatted( mira_killed.display_name( ) );
+          death_message = death_message.replace(
+            mira_killer.name( ),
+            mira_killer.display_name( ) + ChatColor.YELLOW );
         }
-        else
-        {
-          death_message = "%s died to the cruelty of %s".formatted(
-            mira_killed.display_name( ),
-            mira_killer.display_name( ) );
-          
-        }
+        
+        event.setDeathMessage( death_message );
+        this.log( death_message );
       }
       
-      event.setDeathMessage( death_message );
-      
-      this.log( death_message );
       this.server( ).getPluginManager( ).callEvent( new MiraMatchPlayerDeathEvent(
         mira_killed,
         mira_killer ) );

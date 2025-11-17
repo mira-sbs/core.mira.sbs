@@ -198,14 +198,14 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
       this.event_handler( new MiraBlockExplodeGuard<>( this.pulse( ) ) );
     }
     
-    if ( !excluded_death_drops.isEmpty( ) )
+    if ( !this.excluded_death_drops.isEmpty( ) )
     {
       this.event_handler( new MiraPlayerDeathDropGuard<>(
         this.pulse( ),
         ( item )->excluded_death_drops.contains( item.getType( ) ) ) );
     }
     
-    if ( !allow_block_break )
+    if ( !this.allow_block_break )
     {
       this.event_handler( new MiraBlockBreakGuard<>( this.pulse( ) ) );
       this.event_handler( new MiraHangingBreakGuard<>( this.pulse( ) ) );
@@ -214,37 +214,37 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
         ( entity->entity instanceof Hanging ) ) );
     }
     
-    if ( !allow_block_place )
+    if ( !this.allow_block_place )
     {
       this.event_handler( new MiraBlockPlaceGuard<>( this.pulse( ) ) );
     }
     
-    if ( !allow_ender_pearl_damage )
+    if ( !this.allow_ender_pearl_damage )
     {
       new MiraEntityDamageSourceGuard<>(
         this.pulse( ),
         ( damage_source )->damage_source.getDamageType( ) == DamageType.ENDER_PEARL );
     }
     
-    if ( enforce_plateau )
+    if ( this.enforce_plateau )
     {
       this.event_handler( new MiraPlateauBuildingGuard<>( this.pulse( ), plateau_y ) );
     }
     
-    if ( enforce_maximum_build_height )
+    if ( this.enforce_maximum_build_height )
     {
       this.event_handler( new MiraBlockPlaceGuard<>(
         this.pulse( ),
         ( block )->block.getY( ) > maximum_build_height ) );
     }
     
-    if ( enforce_build_region )
+    if ( this.enforce_build_region )
     {
       assert build_region != null;
       
       this.event_handler( new MiraBlockPlaceGuard<>(
         this.pulse( ),
-        ( block )->build_region.within( block.getLocation( ) ) ) );
+        ( block )->!build_region.within( block.getLocation( ) ) ) );
     }
     
     World world = this.match.world( );
@@ -255,6 +255,8 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
       world.setFullTime( this.time_lock_time );
       world.setGameRule( GameRule.DO_DAYLIGHT_CYCLE, false );
     }
+    
+    world.setGameRule( GameRule.DO_WEATHER_CYCLE, false );
   }
   
   public

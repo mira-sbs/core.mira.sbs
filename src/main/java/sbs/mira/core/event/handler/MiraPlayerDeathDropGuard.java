@@ -1,6 +1,7 @@
 package sbs.mira.core.event.handler;
 
 import org.bukkit.Material;
+import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -25,6 +26,7 @@ class MiraPlayerDeathDropGuard<Pulse extends MiraPulse<?, ?>>
   }
   
   @Override
+  @EventHandler
   public
   void handle_event( PlayerDeathEvent event )
   {

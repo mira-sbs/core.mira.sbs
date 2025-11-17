@@ -95,9 +95,9 @@ class MiraScoreboardModel
   public
   void add_spectator( @NotNull MiraPlayerModel<?> mira_player )
   {
-    if ( mira_player.has_team( ) )
+    if ( this.team_spectators.hasEntry( mira_player.name( ) ) )
     {
-      throw new IllegalArgumentException( "player is already part of a match team." );
+      throw new IllegalStateException( "player already has an entry?" );
     }
     
     this.team_spectators.addEntry( mira_player.name( ) );
@@ -106,9 +106,9 @@ class MiraScoreboardModel
   public
   void remove_spectator( @NotNull MiraPlayerModel<?> mira_player )
   {
-    if ( !mira_player.has_team( ) )
+    if ( !this.team_spectators.hasEntry( mira_player.name( ) ) )
     {
-      throw new IllegalArgumentException( "player is not part of a match team." );
+      throw new IllegalStateException( "player already does not have an entry?" );
     }
     
     this.team_spectators.removeEntry( mira_player.name( ) );

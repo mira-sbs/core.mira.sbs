@@ -49,7 +49,7 @@ interface MiraObjectiveCapturableBlockRegion
   
   @NotNull
   default
-  String progress_bar( )
+  String  progress_bar( )
   {
     StringBuilder result = new StringBuilder( );
     

@@ -13,5 +13,7 @@ interface MiraLobby<Pulse extends MiraPulse<?, ?>>
   @NotNull
   MiraMatchModel<Pulse> match( );
   
+  void conclude_game( );
+  
   void conclude_match();
 }
