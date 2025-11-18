@@ -1,5 +1,6 @@
 package sbs.mira.core.model.map.objective;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.jetbrains.annotations.NotNull;
@@ -25,20 +26,29 @@ interface MiraObjectiveCapturableBlockRegion
   List<Block> remaining_blocks( );
   
   default
-  double remaining_progress( )
+  int remaining_progress( )
   {
     int total = this.original_block_positions( ).size( );
     int remaining = this.remaining_blocks( ).size( );
     
-    assert ( total > 0 );
-    
-    return Math.ceil( ( ( double ) remaining / total ) * 100 );
+    if ( total == remaining )
+    {
+      return 100;
+    }
+    else if ( remaining == 0 )
+    {
+      return 0;
+    }
+    else
+    {
+      return ( int ) Math.floor( 100d * ( ( double ) remaining / total ) );
+    }
   }
   
   default
-  double current_progress( )
+  int current_progress( )
   {
-    return 1 - remaining_progress( );
+    return 100 - remaining_progress( );
   }
   
   default
@@ -49,46 +59,43 @@ interface MiraObjectiveCapturableBlockRegion
   
   @NotNull
   default
-  String  progress_bar( )
+  String progress_bar( )
   {
     StringBuilder result = new StringBuilder( );
     
     int block_char_count = this.original_block_positions( ).size( );
     
+    // don't display more than 8 progress bar characters on the scoreboard.
     if ( block_char_count > 8 )
     {
       block_char_count = 8;
     }
     
-    // `char_index` values less than or equal to this value will add a char that
-    // is fully filled in. conversely, values beyond this value will add a char
-    // that is partially shaded out. this visualises the "completion" of the
-    // progress bar.
-    //
-    // quick example:
-    // remaining progress = 20 blocks; 11 broken = 0.45 or 45% remaining progress.
-    // current progress = inversion of remainder = 55% current progress made.
-    // monument block count = 20 blocks = capped at 8 '█'/'▓' chars.
-    // calculate: 8 chars x 0.55 current progress = 4.4; floored to 4/8 chars.
-    //
-    // result:
-    // i. 8 chars - 4 chars filled in (prefers rounding up to 4/8 instead of down to 3/8) =
-    // ii. 4 chars to fill in.
-    // iii. 4 chars to shade out.
-    // iv. shade out char begins at index 4, or ends at index 3 (subtract 1).
-    int filled_index =
-      ( int ) ( block_char_count - Math.floor( block_char_count * this.current_progress( ) ) ) - 1;
+    int remaining_progress = this.remaining_progress( );
+    double progress_increment = 100.00d / block_char_count;
+    double required_progress = 0;
     
     for ( int char_index = 0; char_index < block_char_count; char_index++ )
     {
-      if ( char_index > filled_index )
+      if ( this.captured( ) )
       {
-        result.append( '▓' );
+        result.append( ChatColor.GRAY );
       }
       else
       {
+        result.append( this.team( ).color( ) );
+      }
+      
+      if ( remaining_progress == 100 || remaining_progress > required_progress )
+      {
         result.append( '█' );
       }
+      else
+      {
+        result.append( '▓' );
+      }
+      
+      required_progress += progress_increment;
     }
     
     return result.toString( );

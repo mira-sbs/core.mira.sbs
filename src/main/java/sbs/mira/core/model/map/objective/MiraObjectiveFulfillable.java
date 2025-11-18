@@ -1,9 +1,11 @@
 package sbs.mira.core.model.map.objective;
 
 import org.jetbrains.annotations.NotNull;
+import sbs.mira.core.model.MiraPlayerModel;
 import sbs.mira.core.model.map.MiraObjective;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * public interface for map objectives with a requirement to be fulfilled.
@@ -29,6 +31,8 @@ interface MiraObjectiveFulfillable
    */
   boolean fulfilled( );
   
+  void fulfil( @NotNull MiraPlayerModel<?> mira_player );
+  
   /**
    * the objective can be fulfilled manually - for example, the match timer
    * expiring, or by manual command (rarely).
@@ -37,20 +41,5 @@ interface MiraObjectiveFulfillable
    * progress - plural, as there may be a tie.
    * in the case of a multi-team tie, all tied teams win.
    */
-  void manual_fulfil( );
-  
-  /**
-   * the typical end result is that only one team (against one or more opposing
-   * teams) will fulfil this objective before the match timer expires.
-   * multiple teams can be declared as winners if their final progress towards
-   * fulfilment are equal - this only happens when the match timer expires.
-   * winning team(s) should be declared upon deactivation of the objective -
-   * if they haven't been already.
-   *
-   * @return the winning team(s), by label.
-   * @throws IllegalStateException winner(s) not yet declared.
-   */
-  @NotNull
-  Collection<String> winning_teams( )
-  throws IllegalStateException;
+  List<String> closest_winning_teams( );
 }

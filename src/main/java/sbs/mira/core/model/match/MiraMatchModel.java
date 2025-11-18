@@ -526,11 +526,11 @@ class MiraMatchModel<Pulse extends MiraPulse<?, ?>>
   {
     this.assert_state( true, MiraMatchState.GAME, true );
     
-    this.game_mode( ).determine_winner( );
-    
     this.game_mode( ).deactivate( );
     this.map( ).deactivate( );
     this.unregister_event_handlers( );
+    
+    this.game_mode( ).determine_winner( );
     
     this.begin_post_game( );
   }

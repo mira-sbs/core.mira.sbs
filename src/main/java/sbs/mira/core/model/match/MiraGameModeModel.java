@@ -318,6 +318,7 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
     this.game_task_timer = null;
     
     this.respawn.deactivate( );
+    this.unregister_event_handlers( );
     
     //publishes_statistics( );
   }

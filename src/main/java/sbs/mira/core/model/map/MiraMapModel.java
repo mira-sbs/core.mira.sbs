@@ -77,6 +77,7 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
   private boolean time_lock;
   private int time_lock_time;
   private final @NotNull EnumSet<Material> excluded_death_drops;
+  private final @NotNull EnumSet<Material> excluded_block_drops;
   
   /*—[match attributes]———————————————————————————————————————————————————————————————————————————*/
   
@@ -127,6 +128,7 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
     this.time_lock_time = -1;
     
     this.excluded_death_drops = EnumSet.noneOf( Material.class );
+    this.excluded_block_drops = EnumSet.noneOf( Material.class );
     
     this.match = match;
     this.active = false;
@@ -203,6 +205,13 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
       this.event_handler( new MiraPlayerDeathDropGuard<>(
         this.pulse( ),
         ( item )->excluded_death_drops.contains( item.getType( ) ) ) );
+    }
+    
+    if ( !this.excluded_block_drops.isEmpty( ) )
+    {
+      this.event_handler( new MiraBlockBreakDropGuard<>(
+        this.pulse( ),
+        ( item )->excluded_block_drops.contains( item.getType( ) ) ) );
     }
     
     if ( !this.allow_block_break )
@@ -700,6 +709,18 @@ class MiraMapModel<Pulse extends MiraPulse<?, ?>>
   void exclude_death_drop( @NotNull Material material )
   {
     this.excluded_death_drops.add( material );
+  }
+  
+  /**
+   * blocks made of materials within this set will not give drops upon breaking.
+   * map implementations can specify each material they want to exclude.
+   *
+   * @param material the block material type to remove drops from.
+   */
+  protected
+  void exclude_block_drop( @NotNull Material material )
+  {
+    this.excluded_block_drops.add( material );
   }
   
   /**

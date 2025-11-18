@@ -44,7 +44,7 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   @NotNull
   private final List<Position> original_monument_block_positions;
   @NotNull
-  protected final Map<UUID, Integer> player_contributions;
+  protected final Map<UUID, List<String>> player_contributions;
   
   public
   MiraObjectiveMonument(
@@ -146,7 +146,10 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   public
   World world( )
   {
-    assert this.world != null;
+    if ( this.world == null )
+    {
+      throw new NullPointerException( "monument objective world not set?" );
+    }
     
     return this.world;
   }
@@ -155,8 +158,6 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   public
   List<Block> remaining_blocks( )
   {
-    assert this.remaining_blocks != null;
-    
     return this.remaining_blocks;
   }
   
@@ -164,17 +165,13 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
   public
   List<Position> original_block_positions( )
   {
-    assert this.original_monument_block_positions != null;
-    
     return this.original_monument_block_positions;
   }
   
   @NotNull
   public
-  Map<UUID, Integer> player_contributions( )
+  Map<UUID, List<String>> player_contributions( )
   {
-    assert this.player_contributions != null;
-    
     return this.player_contributions;
   }
   
@@ -230,9 +227,21 @@ class MiraObjectiveMonument<Pulse extends MiraPulse<?, ?>>
       throw new IllegalArgumentException( "irrelevant block being contributed?" );
     }
     
-    int contributions = this.player_contributions.getOrDefault( mira_player.uuid( ), 0 );
+    List<String> contributions;
     
-    this.player_contributions.put( mira_player.uuid( ), contributions + 1 );
+    if ( !this.player_contributions.containsKey( mira_player.uuid( ) ) )
+    {
+      contributions = new ArrayList<>( );
+      
+      this.player_contributions.put( mira_player.uuid( ), contributions );
+    }
+    else
+    {
+      contributions = this.player_contributions.get( mira_player.uuid( ) );
+    }
+    
+    contributions.add( mira_player.team( ).label( ) );
+    
     this.remaining_blocks.remove( block );
   }
 }
