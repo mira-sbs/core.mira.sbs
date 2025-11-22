@@ -512,6 +512,26 @@ class MiraGameModeModel<Pulse extends MiraPulse<?, ?>>
   }
   
   public
+  int subtract_team_points( @NotNull String team_label, int point_count )
+  {
+    int team_points = this.team_points.getOrDefault( team_label, 0 );
+    
+    if ( team_points <= 0 )
+    {
+      throw new IllegalArgumentException( "team does not have any points to subtract?" );
+    }
+    
+    team_points -= point_count;
+    
+    if ( team_points < 0 )
+    {
+      team_points = 0;
+    }
+    
+    return this.team_points.put( team_label, team_points );
+  }
+  
+  public
   int player_killstreak( @NotNull UUID uuid )
   {
     return this.player_killstreaks.get( uuid );
